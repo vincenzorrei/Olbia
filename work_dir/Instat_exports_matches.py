@@ -11,11 +11,15 @@ from datetime import date
 from datetime import datetime
 from tqdm import tqdm
 import pandas as pd
+import sys
+
+
+sys.path.append("C:\\Users\\vince\\Desktop\\Olbia\\olbia_project_AI\\work_dir")
+from utils.bot_functions import standardize_name, download_wait, wait_and_try_to_find_loop, select_new_tab, clearConsole, an_year_later_one_day_left
 
 
 # Sleep time per il ciclo
 sleeptime = 1
-
 script_start = time.time()
 
 downloads_path = "C:\\Users\\vince\\Desktop\\Contrader\\Calcio\\Olbia\\data\\matches\\instat"
@@ -32,64 +36,15 @@ if len(file_already_downloaded) == 1:
         day = file_already_downloaded[0][8:10]
         
         start_date = day + '.' + month + '.' + year
+
 else:
     start_date = None
-
-
-# Clear per il terminal
-def clearConsole():
-    try:
-        get_ipython().magic('clear')
-    except:
-        pass
-
-# POCO ELECANTE ma selenium delude
-def wait_and_try_to_find_loop(element, sleeptime = 2):
-    try:
-        time.sleep(sleeptime)
-        element
-    except:
-        wait_and_try_to_find_loop(element)
-    return element
-
-# Get the new tab as difference 
-def select_new_tab(li1, li2):
-    li_dif = [i for i in li1 + li2 if i not in li1 or i not in li2]
-    return li_dif[0]
-
-# Per aspettare il download
-def download_wait(directory, len_before, timeout):
-    """
-    Wait number of files increase.
-    """
-    not_matched = True
-    sec = 0
-    
-    while not_matched:
-        time.sleep(1)
-        sec += 1
-        
-        if len([f for f in listdir(downloads_path) if isfile(join(downloads_path, f))]) == len_before + 1:
-            not_matched = False
-            res = True
-        if  sec > timeout:
-            not_matched = False
-            res = False
-    return res
-
-# Simply get a date 364 days before
-def an_year_later_one_day_left(starting_date):
-    res = str(int(starting_date[:2])-1) + starting_date[2:-4] + str(int(starting_date[-4:])+1)
-    return res
-
-
 clearConsole()
 
 
 def download_instat_matches_for_all_players_in_period(starting_date, ending_date, processed_player_list = []):
     
     reference_team = 'Olbia'
-
     user = "personalmail.marino@gmail.com"
     pw = "d1287"
     
@@ -535,9 +490,3 @@ all_players_till_the_date_complete_path = downloads_path +'\\'+all_new_data_most
 
 # Save in the path
 all_new_data.to_excel(all_players_till_the_date_complete_path)
-
-
-
-
-
-

@@ -11,6 +11,9 @@ from IPython import get_ipython
 import datetime
 import os
 
+sys.path.append("C:\\Users\\vince\\Desktop\\Olbia\\olbia_project_AI\\work_dir")
+from utils.bot_functions import standardize_name, clearConsole, download_wait
+
 
 user = "olbiapass65"
 pw = "olbiapass65"
@@ -22,41 +25,7 @@ downloads_path = "C:\\Users\\vince\\Desktop\\Contrader\\Calcio\\Olbia\\data\\mat
 
 # Controllo quali siano i file già presenti nella cartella di destianzione
 already_downloaded = [f for f in listdir(downloads_path) if isfile(join(downloads_path, f))]
-number_of_files_yet_downloaded = len(already_downloaded)
-
-
-# Standardizzo il nome per il salvataggio e il matching
-def standardize_name(string):
-    excluded_values = ["ˆ","~","{","}","”","#","|","&","*",":","?","/","\\","<",">"]
-    for i in excluded_values:
-        string = string.replace(i,"")
-    return string.replace("%","percent").lower()
-
-
-# Clear per il terminal
-def clearConsole():
-    try:
-        get_ipython().magic('clear')
-    except:
-        pass
-
-
-# Per aspettare il download
-def download_wait(directory, len_before, timeout):
-    """
-    Wait number of files increase.
-    """
-    not_matched = True
-    sec = 0
-    
-    while not_matched:
-        time.sleep(1)
-        sec += 1
-        
-        if len([f for f in listdir(downloads_path) if isfile(join(downloads_path, f))]) == len_before + 1 or sec > timeout:
-            time.sleep(2)
-            not_matched = False
-            
+number_of_files_yet_downloaded = len(already_downloaded)            
             
 # Setto il webdriver
 chrome_options = webdriver.ChromeOptions()
@@ -67,10 +36,7 @@ driver.maximize_window()
 
 # Sleep time per il ciclo
 sleeptime = 1
-
-# settiamo l'attesa massima
 wait = WebDriverWait(driver, 10)
-
 clearConsole()
 
 # Setto il sito di partenza
@@ -78,23 +44,16 @@ driver.get("http://stats-dynamix.com/Account/KineticLogOn?returnUrl=%2FGpsReport
 
 # Cerco la barra per l'username
 username_bar = driver.find_element(By.ID,"UserName")
-
-# Scrivo all'interno della barra
 username_bar.send_keys(user)
 
-# Cerco la barra per la password
+# Cerco la barra per la password e premo 'invio'
 pw_bar = driver.find_element(By.ID,"Password")
-
-# Scrivo all'interno della barra
 pw_bar.send_keys(pw)
-
-# Premo invio
 pw_bar.send_keys(Keys.RETURN)
 
 # Individuo il bottone e premo
 button = driver.find_element(By.XPATH,"//div[@class='TileTitle']").click()
 button = driver.find_element(By.XPATH,"(//div[@class='TileTitle'])[2]").click()
-
 
 # Vedo quanti sono nell'ultima pagina
 len_full_page = len(driver.find_elements(By.CLASS_NAME ,"grid-row "))
@@ -104,7 +63,6 @@ len_last_page = len(driver.find_elements(By.CLASS_NAME ,"grid-row "))
 driver.back()
 total_len = (pages - 1) * len_full_page + len_last_page
 
-    
 # Dict per data delle partite
 if 'file_to_download_in_this_tournment' not in locals():
     file_to_download_in_this_tournment = total_len - number_of_files_yet_downloaded
@@ -145,7 +103,6 @@ start_time = time.time()
 while there_is_a_next_page:
     # Seleziono gli elementi della griglia
     grid_elements = driver.find_elements(By.CLASS_NAME ,"grid-row ")
-
     
     # Itero per il numero elementi della griglia
     for i in range(len(grid_elements)):
@@ -206,8 +163,6 @@ while there_is_a_next_page:
         # Puliamo il terminal
         clearConsole()
         
-
-        
         # Cronometro
         end_time = time.time()
         delta_time = end_time - start_time
@@ -234,21 +189,17 @@ while there_is_a_next_page:
         table_element = wait.until(EC.element_to_be_clickable((By.ID, "tabNewTable")))
         table_element.click()
         
-        
         # Len prima del download
         downloaded_before = [f for f in listdir(downloads_path) if isfile(join(downloads_path, f))]
         len_before = len(downloaded_before)
-        
         
         # Faccio l'export del file
         time.sleep(sleeptime) # a volte wait non basta
         export_element = wait.until(EC.element_to_be_clickable((By.XPATH, "//div[@id='toolbar']//button[@class='btn-toolbar']")))
         export_element.click()
         
-        
         # Aspetto il download
         download_wait(downloads_path, len_before, 20)
-        
         downloaded_till_now = [f for f in listdir(downloads_path) if isfile(join(downloads_path, f))]
         right_name = downloads_path+'\\'+ expected_name_with_extenion
         

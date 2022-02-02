@@ -10,7 +10,9 @@ import pickle
 from IPython import get_ipython
 import datetime
 import os
-import fast_functions
+
+sys.path.append("C:\\Users\\vince\\Desktop\\Olbia\\olbia_project_AI\\work_dir")
+from utils.bot_functions import standardize_name, clearConsole, download_wait
 
 
 
@@ -26,40 +28,6 @@ downloads_path = "C:\\Users\\vince\\Desktop\\Contrader\\Calcio\\Olbia\\data\\tra
 already_downloaded = [f[:-4] for f in listdir(downloads_path) if isfile(join(downloads_path, f))]
 number_of_files_yet_downloaded = len(already_downloaded)
 
-
-# Standardizzo il nome per il salvataggio e il matching
-def standardize_name(string):
-    excluded_values = ["ˆ","~","{","}","”","#","|","&","*",":","?","/","\\","<",">"]
-    for i in excluded_values:
-        string = string.replace(i,"")
-    return string.replace("%","percent").lower()
-
-
-# Clear per il terminal
-def clearConsole():
-    try:
-        get_ipython().magic('clear')
-    except:
-        pass
-
-
-# Per aspettare il download
-def download_wait(directory, len_before, timeout):
-    """
-    Wait number of files increase.
-    """
-    not_matched = True
-    sec = 0
-    
-    while not_matched:
-        time.sleep(1)
-        sec += 1
-        
-        if len([f for f in listdir(downloads_path) if isfile(join(downloads_path, f))]) == len_before + 1 or sec > timeout:
-            time.sleep(2)
-            not_matched = False
-
-
 # Setto il webdriver
 chrome_options = webdriver.ChromeOptions()
 prefs = {'download.default_directory' : downloads_path}
@@ -67,12 +35,9 @@ chrome_options.add_experimental_option('prefs', prefs)
 driver = webdriver.Chrome(PATH, chrome_options=chrome_options)
 driver.maximize_window()
 
-# Sleep time per il ciclo
+# Sleep time e attesa massima
 sleeptime = 1
-
-# settiamo l'attesa massima
 wait = WebDriverWait(driver, 10)
-
 clearConsole()
 
 # Setto il sito di partenza
@@ -80,17 +45,11 @@ driver.get("http://stats-dynamix.com/Account/KineticLogOn?returnUrl=%2FGpsReport
 
 # Cerco la barra per l'username
 username_bar = driver.find_element(By.ID,"UserName")
-
-# Scrivo all'interno della barra
 username_bar.send_keys(user)
 
-# Cerco la barra per la password
+# Cerco la barra per la password e premo 'invio'
 pw_bar = driver.find_element(By.ID,"Password")
-
-# Scrivo all'interno della barra
 pw_bar.send_keys(pw)
-
-# Premo invio
 pw_bar.send_keys(Keys.RETURN)
 
 # Individuo il bottone e premo
@@ -311,8 +270,6 @@ while there_is_a_next_page:
         print("\n\nDone!\n")
         driver.quit()
         there_is_a_next_page = False
-
-
 
 
 config_filename_1 = 'C:\\Users\\vince\\Desktop\\Contrader\\Calcio\\Olbia\\config\\date_to_name_to_info.pkl'

@@ -12,9 +12,11 @@ import sys
 
 for line in sys.path:
     print(line)
-sys.path.append("C:\\Users\\vince\\Desktop\\Olbia\\olbia_project_AI\\work_dir\\foos")
+sys.path.append("C:\\Users\\vince\\Desktop\\Olbia\\olbia_project_AI\\work_dir")
 
-from foos import bot_functions
+from utils.bot_functions import standardize_name, download_wait, wait_and_try_to_find_loop, select_new_tab, clearConsole, an_year_later_one_day_left
+from utils.data_functions import convert_time_in_seconds, check_unique_time_format, outlier_removal_by_pvalue
+
 
 start_script_time = time.time()
 
@@ -25,7 +27,6 @@ matches_path = "C:\\Users\\vince\\Desktop\\Contrader\\Calcio\\Olbia\\data\\match
 # Check that they are files and list their complete paths
 all_trainings_paths = [join(trainings_path, f) for f in listdir(trainings_path) if isfile(join(trainings_path, f))]
 all_matches_path = [join(matches_path, f) for f in listdir(matches_path) if isfile(join(matches_path, f))]
-all_matches_path[-1]
 
 # Trainings: Import dict of dict {date:{expected name : {info}}}
 a_file = open('C:\\Users\\vince\\Desktop\\Contrader\\Calcio\\Olbia\\config\\date_to_name_to_info.pkl', "rb")
@@ -42,26 +43,6 @@ date_to_name_to_info_matches = pickle.load(a_file)
 # Matches: Import dict {expected name : date}
 a_file = open('C:\\Users\\vince\\Desktop\\Contrader\\Calcio\\Olbia\\config\\name_to_date_matches.pkl', "rb")
 name_to_date_matches = pickle.load(a_file)
-
-#• Time format
-def check_unique_time_format(a_string):
-    if (a_string[-3] == ':') & (a_string[-6] == ':'):
-        res = True
-    else:
-        res = False
-    return res
-
-
-# Time conversion
-def convert_time_in_seconds(a_string):
-    try:
-        second = int(a_string[-2:]) + int(a_string[-5:-3])*60 + int(a_string[-8:-6])*3600
-    except:
-        try:
-            second = int(a_string)
-        except:
-            second = 0
-    return second
 
 
 first = True
