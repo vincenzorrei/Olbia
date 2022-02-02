@@ -1,0 +1,15 @@
+{
+"paths":{
+	"trainings":".\\data\\stats\\trainings",
+	"matches":".\\data\\stats\\matches",
+	
+	"chromedriver":".\\chromedriver.exe"
+	
+	},
+
+"credentials":{
+	"user":"olbiapass65",
+	"password":"olbiapass65"
+	}
+
+}

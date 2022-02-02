@@ -10,18 +10,17 @@ import pickle
 from IPython import get_ipython
 import datetime
 import os
+import json
+from work_dir.utils.bot_functions import standardize_name, clearConsole, download_wait
 
-sys.path.append("C:\\Users\\vince\\Desktop\\Olbia\\olbia_project_AI\\work_dir")
-from utils.bot_functions import standardize_name, clearConsole, download_wait
+file = open(".\\config.json")
+config_file = json.load(file)
+file.close
 
-
-user = "olbiapass65"
-pw = "olbiapass65"
-
-PATH = "C:\Program Files (x86)\chromedriver.exe"
-
-# Seleziono la cartella di destinazione
-downloads_path = "C:\\Users\\vince\\Desktop\\Contrader\\Calcio\\Olbia\\data\\matches\\stats_dynamics"
+user = config_file['credentials']['user']
+pw = config_file['credentials']['password']
+chromedriver = config_file['paths']['chromedriver']
+downloads_path = config_file['paths']['trainings']
 
 # Controllo quali siano i file già presenti nella cartella di destianzione
 already_downloaded = [f for f in listdir(downloads_path) if isfile(join(downloads_path, f))]
@@ -31,7 +30,7 @@ number_of_files_yet_downloaded = len(already_downloaded)
 chrome_options = webdriver.ChromeOptions()
 prefs = {'download.default_directory' : downloads_path}
 chrome_options.add_experimental_option('prefs', prefs)
-driver = webdriver.Chrome(PATH, chrome_options=chrome_options)
+driver = webdriver.Chrome(chromedriver, chrome_options=chrome_options)
 driver.maximize_window()
 
 # Sleep time per il ciclo
@@ -91,13 +90,9 @@ if 'processed_expected_names_with_extension' not in locals():
 if 'count_already_downloaded_on_other_tournment' not in locals():
     count_already_downloaded_on_other_tournment = []
     
-# Questa deve essere inizializzata ogni volta
+# Inizializzazioni
 count_already_downloaded_matched = 0
-
-# Opzione per il while loop
 there_is_a_next_page = True
-
-# Inizia il conteggio del tempo
 start_time = time.time()
 
 while there_is_a_next_page:
@@ -121,32 +116,27 @@ while there_is_a_next_page:
         
         # 1) Controllo che non sia stato già scaricato in un precedente tournment
         if expected_name in already_downloaded:
-            print('Already downloaded in other tournment:\n{}\n\nSo skipped\n'.format(expected_name))
             count_already_downloaded_on_other_tournment +=1
+            print('Already downloaded in other tournment:\n{}\n\nSo skipped\n'.format(expected_name))
             print('Founded on totals:\n{}/{}'.format(count_already_downloaded_on_other_tournment,number_of_files_yet_downloaded))
             continue
         
         # 2) Controllo che non sia stato già processato in questo tournment
         if expected_name in processed_expected_names:
-            clearConsole()
             count_already_downloaded_matched += 1
-
             print('\nAlready downloaded:\n{}\n'.format(expected_name))
-            print('Found already downloaded in this tournment on true already downloaded in this tournment:\n{}/{}'.format(count_already_downloaded_matched, number_of_files_yet_downloaded))
-            time.sleep(1)
+            print('Found already downloaded in this tournment:{}'.format(count_already_downloaded_matched))
             continue
         
         # 3) Controlliamo se è passata una replica: in teoria, arrivati qua all'if dovrebbe valere l'uguaglianza
         if count_already_downloaded_matched < number_of_files_yet_downloaded:
             expected_replicas.append(expected_name)
-            
             print('\n\nAttention!!!\n')
             print('Found an expected replica:\n{}\n'.format(expected_name))
             print('Total expected replicas:\n{}\n'.format(len(expected_replicas)))
         
         # Dizionario dal nome ci da la data
         name_to_date[expected_name] = date
-        
         
         # Conteggio file salvati
         files_count += 1
@@ -159,17 +149,12 @@ while there_is_a_next_page:
                                                       'notes':notes}
         
         old_date = date
-        
-        # Puliamo il terminal
         clearConsole()
         
         # Cronometro
         end_time = time.time()
-        delta_time = end_time - start_time
-        time_to_finish = delta_time * (total_len - number_of_files_yet_downloaded - files_count)
-        conversion = datetime.timedelta(seconds=time_to_finish)
-        time_to_finish = str(conversion)[:7]
-        
+        time_to_finish = (end_time - start_time) * (total_len - number_of_files_yet_downloaded - files_count)
+        time_to_finish = str(datetime.timedelta(seconds=time_to_finish))[:7]
         start_time = time.time()
 
         # Print di alcune info
@@ -230,23 +215,20 @@ while there_is_a_next_page:
         driver.quit()
         there_is_a_next_page = False
     
-
-config_filename_1 = 'C:\\Users\\vince\\Desktop\\Contrader\\Calcio\\Olbia\\config\\date_to_match_to_info.pkl'
-config_filename_2 = 'C:\\Users\\vince\\Desktop\\Contrader\\Calcio\\Olbia\\config\\name_to_date_matches.pkl'
+config_filename_1 = config_file['paths']['date_to_name_to_info']
+config_filename_2 = config_file['paths']['name_to_date_matches']
 
 try:
     # Trainings: Import dict of dict {date:{expected name : {info}}}
     first_file = open(config_filename_1, "rb")
     date_to_match_to_info_prec = pickle.load(first_file)
     first_file.close()
-    
     date_to_match_to_info.update(date_to_match_to_info_prec)
 
     # Trainings: Import dict {expected name : date}
     second_file = open(config_filename_2, "rb")
     name_to_date_matches = pickle.load(second_file)
     second_file.close()
-    
     name_to_date.update(name_to_date_matches)
     
 except:
@@ -260,4 +242,4 @@ second_file = open(config_filename_2, "wb")
 pickle.dump(name_to_date, second_file)
 second_file.close()
 
-print('Ancillary information saved in the folder:\nC:\\Users\\vince\\Desktop\\Contrader\\Calcio\\Olbia\\config')
+print('Ancillary information saved!')

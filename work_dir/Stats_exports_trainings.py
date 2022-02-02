@@ -10,29 +10,27 @@ import pickle
 from IPython import get_ipython
 import datetime
 import os
+from work_dir.utils.bot_functions import standardize_name, clearConsole, download_wait
+import json
 
-sys.path.append("C:\\Users\\vince\\Desktop\\Olbia\\olbia_project_AI\\work_dir")
-from utils.bot_functions import standardize_name, clearConsole, download_wait
+file = open(".\\config.json")
+config_file = json.load(file)
+file.close
 
-
-
-user = "olbiapass65"
-pw = "olbiapass65"
-
-PATH = "C:\Program Files (x86)\chromedriver.exe"
-
-# Seleziono la cartella di destinazione
-downloads_path = "C:\\Users\\vince\\Desktop\\Contrader\\Calcio\\Olbia\\data\\trainings"
+user = config_file['credentials']['user']
+pw = config_file['credentials']['password']
+chromedriver = config_file['paths']['chromedriver']
+downloads_path = config_file['paths']['trainings']
 
 # Controllo quali siano i file già presenti nella cartella di destianzione
 already_downloaded = [f[:-4] for f in listdir(downloads_path) if isfile(join(downloads_path, f))]
-number_of_files_yet_downloaded = len(already_downloaded)
+number_of_files_already_downloaded = len(already_downloaded)
 
 # Setto il webdriver
 chrome_options = webdriver.ChromeOptions()
 prefs = {'download.default_directory' : downloads_path}
 chrome_options.add_experimental_option('prefs', prefs)
-driver = webdriver.Chrome(PATH, chrome_options=chrome_options)
+driver = webdriver.Chrome(chromedriver, chrome_options=chrome_options)
 driver.maximize_window()
 
 # Sleep time e attesa massima
@@ -56,7 +54,6 @@ pw_bar.send_keys(Keys.RETURN)
 button = driver.find_element(By.XPATH,"//div[@class='TileTitle']").click()
 button = driver.find_element(By.XPATH,"(//div[@class='TileTitle'])[3]").click()
 
-
 # Due calcoli per le info sulle pagine e tempo mancante
 len_full_page = len(driver.find_elements(By.CLASS_NAME ,"grid-row "))
 button = driver.find_element(By.XPATH,'//*[@id="KSWrapper"]/div[1]/div/div/div/div/ul/li[5]/a').click()
@@ -65,10 +62,9 @@ len_last_page = len(driver.find_elements(By.CLASS_NAME ,"grid-row "))
 driver.back()
 total_len = (pages - 1) * len_full_page + len_last_page
 
-
 # Dict per data e ordine degli esercizi con if nel caso si interrompa
 if 'file_to_download_in_this_tournment' not in locals():
-    file_to_download_in_this_tournment = total_len - number_of_files_yet_downloaded
+    file_to_download_in_this_tournment = total_len - number_of_files_already_downloaded
 
 if 'name_to_date' not in locals():
     name_to_date = {}
@@ -97,15 +93,10 @@ if 'processed_expected_names_with_extension' not in locals():
 if 'count_already_downloaded_on_other_tournment' not in locals():
     count_already_downloaded_on_other_tournment = 0
 
-# Questa deve essere inizializzata ogni volta
+# Inizializzazioni
 count_already_downloaded_matched = 0
-
-# Opzione per il while loop
 there_is_a_next_page = True
-
-# Inizia il conteggio del tempo
 start_time = time.time()
-
 
 while there_is_a_next_page:
     
@@ -128,28 +119,24 @@ while there_is_a_next_page:
         
         # 1) Controllo che non sia stato già scaricato in un precedente tournment
         if expected_name in already_downloaded:
-            print('Already downloaded in other tournment:\n{}\n\nSo skipped\n'.format(expected_name))
             count_already_downloaded_on_other_tournment +=1
-            print('Founded on totals:\n{}/{}'.format(count_already_downloaded_on_other_tournment,number_of_files_yet_downloaded))
+            print('Already downloaded in other tournment:\n{}'.format(expected_name))
+            print('Founded on total downloaded:\n{}/{}'.format(count_already_downloaded_on_other_tournment,number_of_files_already_downloaded))
             continue
  
         
         # 2) Controllo che non sia stato già processato in questo tournment
         if expected_name in processed_expected_names:
-            clearConsole()
             count_already_downloaded_matched += 1
-
             print('\nAlready downloaded:\n{}\n'.format(expected_name))
-            print('Found already downloaded in this tournment on true already downloaded in this tournment:\n{}/{}'.format(count_already_downloaded_matched,number_of_files_yet_downloaded - len(processed_expected_names)))
-            time.sleep(1)
+            print('Found already downloaded in this tournment:{}'.format(count_already_downloaded_matched))
             continue
 
 
         # 3) Controlliamo se è passata una replica: in teoria, arrivati qua all'if dovrebbe valere l'uguaglianza
-        if count_already_downloaded_matched < number_of_files_yet_downloaded:
+        if count_already_downloaded_matched < number_of_files_already_downloaded:
             expected_replicas.append(expected_name)
-            
-            print('\n\nAttention!!!\n')
+            print('\n\n!!!Attention!!!\n')
             print('Found an expected replica:\n{}\n'.format(expected_name))
             print('Total expected replicas:\n{}\n'.format(len(expected_replicas)))
 
@@ -157,7 +144,6 @@ while there_is_a_next_page:
         # Se cambiata la data, per la data precedente sistemo il conteggio degli esercizi che ora è al contrario
         if date != old_date and old_date != 0:
             conteggio_giornaliero = 0
-            
             exercise_in_the_day = list(date_to_name_to_info[old_date].keys())
             inverted_order = [date_to_name_to_info[old_date][ex]['ord'] for ex in exercise_in_the_day]
             true_order = list(reversed(inverted_order))
@@ -166,28 +152,21 @@ while there_is_a_next_page:
                 date_to_name_to_info[old_date][exercise_in_the_day[ind]]['ord'] = true_order[ind]
         
         
-
-        
         # Puliamo il terminal
         clearConsole()
-
-        # Conteggio file salvati
         files_count += 1
         
         # Cronometro
         end_time = time.time()
-        delta_time = end_time - start_time
-        time_to_finish = delta_time * (total_len - number_of_files_yet_downloaded - files_count)
-        conversion = datetime.timedelta(seconds=time_to_finish)
-        time_to_finish = str(conversion)[:7]
-        
+        time_to_finish = (end_time - start_time) * (total_len - number_of_files_already_downloaded - files_count)
+        time_to_finish = str(datetime.timedelta(seconds=time_to_finish))[:7]
         start_time = time.time()
         
         
         # Print di alcune info
         print('\nDownloading:\n{}\n'.format(expected_name))
-        print('Found already downloaded on true already downaloaded:\n{}/{}'.format(count_already_downloaded_matched,number_of_files_yet_downloaded))
-        print('\nDownloaded files number:\n{}/{}'.format(files_count, file_to_download_in_this_tournment))
+        print('Found already downloaded on true already downaloaded:\n{}/{}'.format(count_already_downloaded_matched,number_of_files_already_downloaded))
+        print('\nDownloaded files:\n{}/{}'.format(files_count, file_to_download_in_this_tournment))
         print('\nTime to finish:\n{}'.format(time_to_finish))
         
         
@@ -215,23 +194,20 @@ while there_is_a_next_page:
         table_element = wait.until(EC.element_to_be_clickable((By.ID, "tabNewTable")))
         table_element.click()
         
-        
-        # Len prima del download+
+        # Len prima del download
         downloaded_before = [f for f in listdir(downloads_path) if isfile(join(downloads_path, f))]
         len_before = len(downloaded_before)
         
-        
         # Faccio l'export del file
-        time.sleep(sleeptime) # a volte wait 
+        time.sleep(sleeptime)
         export_element = wait.until(EC.element_to_be_clickable((By.XPATH, "//div[@id='toolbar']//button[@class='btn-toolbar']")))
         export_element.click()
         
         # Aspetto il download
-        download_wait(downloads_path, len_before, 20)
-        
+        download_wait(downloads_path, len_before, 20)        
         downloaded_till_now = [f for f in listdir(downloads_path) if isfile(join(downloads_path, f))]
-        right_name = downloads_path+'\\'+ expected_name_with_extenion
         
+        right_name = downloads_path+'\\'+ expected_name_with_extenion
         
         if len(downloaded_till_now) == 1:
             last_downloaded = downloaded_till_now[0]
@@ -271,24 +247,20 @@ while there_is_a_next_page:
         driver.quit()
         there_is_a_next_page = False
 
-
-config_filename_1 = 'C:\\Users\\vince\\Desktop\\Contrader\\Calcio\\Olbia\\config\\date_to_name_to_info.pkl'
-config_filename_2 = 'C:\\Users\\vince\\Desktop\\Contrader\\Calcio\\Olbia\\config\\name_to_date_matches.pkl'
+config_filename_1 = config_file['paths']['date_to_name_to_info']
+config_filename_2 = config_file['paths']['name_to_date_matches']
 
 try:
-    # Trainings: Import dict of dict {date:{expected name : {info}}}
+    # Trainings: Import dict of dict {date:{expected name : {info}}} and update
     first_file = open(config_filename_1, "rb")
     date_to_name_to_info_trainings = pickle.load(first_file)
     first_file.close()
-    
-    # Update it with new info
     date_to_name_to_info.update(date_to_name_to_info_trainings)
 
-    # Trainings: Import dict {expected name : date}
+    # Trainings: Import dict {expected name : date} and update
     second_file = open(config_filename_2, "rb")
     name_to_date_exercises = pickle.load(second_file)
     second_file.close()
-    
     name_to_date.update(name_to_date_exercises)
  
 except:
@@ -302,4 +274,4 @@ second_file = open(config_filename_2, "wb")
 pickle.dump(name_to_date, second_file)
 second_file.close()
 
-print('Ancillary information saved in the folder:\nC:\\Users\\vince\\Desktop\\Contrader\\Calcio\\Olbia\\config')
+print('Ancillary information saved!')
