@@ -242,10 +242,10 @@ while there_is_a_next_page:
         for ind in range(len(exercise_in_the_day)):
             date_to_name_to_info[date][exercise_in_the_day[ind]]['ord'] = true_order[ind]
         
-        
         print("\n\nDone!\n")
         driver.quit()
         there_is_a_next_page = False
+
 
 config_filename_1 = config_file['paths']['date_to_name_to_info']
 config_filename_2 = config_file['paths']['name_to_date_matches']

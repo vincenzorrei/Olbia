@@ -66,3 +66,10 @@ def select_new_tab(li1, li2):
 def an_year_later_one_day_left(starting_date):
     res = str(int(starting_date[:2])-1) + starting_date[2:-4] + str(int(starting_date[-4:])+1)
     return res
+
+def right_format_date_imputation(string):
+    if len(string) == 8:
+        string = string[:-2] + '20' + string[-2:]
+    elif len(string) == 5:
+        string = string + '/' + str(datetime.now().year)
+    return string

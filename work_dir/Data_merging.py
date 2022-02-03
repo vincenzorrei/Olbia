@@ -6,42 +6,36 @@ from datetime import datetime
 import time
 import pandas as pd
 import numpy as np
-from scipy import stats
-import matplotlib.pyplot as plt
-import sys
+from work_dir.utils.data_functions import convert_time_in_seconds, outlier_removal_by_pvalue, plot_value_in_time
 
-for line in sys.path:
-    print(line)
-sys.path.append("C:\\Users\\vince\\Desktop\\Olbia\\olbia_project_AI\\work_dir")
-
-from utils.bot_functions import standardize_name, download_wait, wait_and_try_to_find_loop, select_new_tab, clearConsole, an_year_later_one_day_left
-from utils.data_functions import convert_time_in_seconds, check_unique_time_format, outlier_removal_by_pvalue
-
+file = open(".\\config.json")
+config_file = json.load(file)
+file.close
 
 start_script_time = time.time()
 
 # Paths to data ---------------------------------------------------------------
-trainings_path = "C:\\Users\\vince\\Desktop\\Contrader\\Calcio\\Olbia\\data\\trainings"
-matches_path = "C:\\Users\\vince\\Desktop\\Contrader\\Calcio\\Olbia\\data\\matches\\stats_dynamics"
+trainings_path = config_file['paths']['trainings']
+matches_path = config_file['paths']['trainings']
 
 # Check that they are files and list their complete paths
 all_trainings_paths = [join(trainings_path, f) for f in listdir(trainings_path) if isfile(join(trainings_path, f))]
 all_matches_path = [join(matches_path, f) for f in listdir(matches_path) if isfile(join(matches_path, f))]
 
 # Trainings: Import dict of dict {date:{expected name : {info}}}
-a_file = open('C:\\Users\\vince\\Desktop\\Contrader\\Calcio\\Olbia\\config\\date_to_name_to_info.pkl', "rb")
+a_file = open(config_file['paths']['date_to_name_to_info'], "rb")
 date_to_name_to_info_trainings = pickle.load(a_file)
 
 # Trainings: Import dict {expected name : date}
-a_file = open('C:\\Users\\vince\\Desktop\\Contrader\\Calcio\\Olbia\\config\\name_to_date.pkl', "rb")
+a_file = open(config_file['paths']['date_to_name_to_info'], "rb")
 name_to_date_exercises = pickle.load(a_file)
 
 # Matches: Import dict {date:{expected name : {info}}}
-a_file = open('C:\\Users\\vince\\Desktop\\Contrader\\Calcio\\Olbia\\config\\date_to_match_to_info.pkl', "rb")
+a_file = open(config_file['paths']['date_to_match_to_info'], "rb")
 date_to_name_to_info_matches = pickle.load(a_file)
 
 # Matches: Import dict {expected name : date}
-a_file = open('C:\\Users\\vince\\Desktop\\Contrader\\Calcio\\Olbia\\config\\name_to_date_matches.pkl', "rb")
+a_file = open(config_file['paths']['name_to_date_matches'], "rb")
 name_to_date_matches = pickle.load(a_file)
 
 
@@ -135,32 +129,21 @@ for folder in [trainings_path, matches_path]:
             # Concatenation        
             all_data = pd.concat([all_data, single_data])
 
-print('\nData loading and concatenation successfully completed!\n')
 
 # Columns trainingn alert
 if type(data_variables_lists[0]) == list:
     print('!!! ALERT!!!\nDifferent columns setting in matches dataset:\n', len(data_variables_lists))
+else:
+    print('\nData loading and concatenation successfully completed!\n')
 
 
 # Change columns names
 all_data = all_data.rename(columns={'Unnamed: 0': "name"})
 
-
-# Time in seconds conversion
-different_time_format = []
-for i in all_data['T']:
-    try:
-        check_unique_time_format(i)
-    except:
-        different_time_format.append(i)
-
-# Uncomment next line to see different time format
-# print('Different time format:\n',different_time_format)
-
 all_data['T_conversion'] = all_data['T'].map(convert_time_in_seconds)
 all_data = all_data.drop(['Unnamed: 30'], axis = 1)
 
-# lower to every series
+# Series types
 dtypes = [str(all_data[col].dtype) for col in all_data.columns]
 col_to_dtypes = dict(zip(all_data.columns, dtypes))
 
@@ -205,32 +188,6 @@ distance_error = all_data[all_data['D'] >=  20000]
 all_data = all_data.drop(distance_error.index)
 
 # 6) Outlier: Z-scores removing
-# print(all_data[['D','T','name','date','session']].sort_values(["D"], ascending = (False)).head(33))
-# print(all_data[['date','group_name','D','T','T_conversion']].sort_values(["T_conversion"], ascending = (False)).head(33))
-
-# print(set(all_data[all_data['date'] == '2020-09-03']['session']))
-# print(all_data[['date','D','T','group_name','session']].sort_values(["T"], ascending = (False)).head(33))
-
-def outlier_removal_by_pvalue(all_data, numerical_cols, p_value = 1.1102230246251565e-16):
-    prob = 1 - p_value
-    z_score = stats.norm.ppf(prob)
-    
-    zscores_condition_respected = (np.abs(stats.zscore(all_data[numerical_cols])) < z_score).all(axis=1)
-    zscores_condition_unrespected = len(zscores_condition_respected) - sum(zscores_condition_respected)
-    df_zscores_boolean = (np.abs(stats.zscore(all_data[numerical_cols])) >= z_score)
-    
-    evidence_value = pd.DataFrame()
-    for index, row in df_zscores_boolean.iterrows():
-        if True in list(row):
-            evidence_value[all_data.iloc[index]['name']] = np.array(row) * all_data.iloc[index][numerical_cols]
-                
-    evidence_value = evidence_value.T.sort_index()
-    print('Outlier excluded for (p = {}):\n{}\n'.format(round(p_value,20),zscores_condition_unrespected))
-    print(evidence_value)
-        
-    return all_data[zscores_condition_respected]
-
-
 numerical_cols = [col for col in all_data.columns if (col_to_dtypes[col] in numerical_classes)]
 
 # Assign to all_data the next line to use automatic outlier detection based on p-value
@@ -241,15 +198,12 @@ numerical_cols = [col for col in all_data.columns if (col_to_dtypes[col] in nume
 # 1) Rstrip : space in the end
 all_data['name'] = all_data['name'].map(str.rstrip)
 
-
 # 2) Convert date to datetime format
 all_data['date'] = [datetime.strptime(i, '%d/%m/%Y') for i in all_data['date']]
-
 
 # 3) Sort by date first and naive order after and indexing 
 all_data = all_data.sort_values(["date", "naive_order"], ascending = (True, True))
 all_data.index = list(range(all_data.shape[0]))
-
 
 # 4) Year sin cosin convertion
 timestamp_s = all_data['date'].map(pd.Timestamp.timestamp)
@@ -261,24 +215,7 @@ all_data['Year sin'] = np.sin(timestamp_s * (2 * np.pi / year))
 all_data['Year cos'] = np.cos(timestamp_s * (2 * np.pi / year))
 
 # Plot
-plt.style.use('dark_background')
 
-def plot_value_in_time(player = 'lella', value_to_plot = 'Year sin', alpha = 0.1):
-    player_dates = list(all_data[all_data['name'] == player]['date'])
-    values_player = list(all_data[all_data['name'] == player][value_to_plot])
-    
-    dt_start = datetime.fromtimestamp(datetime.timestamp(player_dates[0]))
-    dt_stop = datetime.fromtimestamp(datetime.timestamp(player_dates[-1]))
-    periods = int((dt_stop - dt_start).days)
-    datelist = pd.date_range(dt_start, periods=periods).map(pd.Timestamp.timestamp)
-    
-    datelist = [datetime.fromtimestamp(int(i)) for i in datelist]
-    plt.figure(figsize = (13,5))
-    plt.scatter(datelist, [(min(values_player) - np.abs(min(values_player)*0.1)) for i in range(len(datelist))], color = 'black', marker = 'o', s = 1)
-    plt.scatter(player_dates, values_player, color= 'deepskyblue', alpha = alpha, label = value_to_plot)
-    plt.legend()
-    plt.title(player.upper())
-    plt.show()
 
 # print(set(all_data['name']))
 # print(all_data.columns)
@@ -693,87 +630,7 @@ for player in players_name:
         never_palyer +=1
 
 
-stats_to_instats_names = {'pennington':'Nicholas Pennington',
-                'capello':'Alessandro Capello',
-                'murgia':'Alessio Murgia',
-                'bellodi':'Gabriele Bellodi',
-                'cotali':'Matteo Cotali',
-                'cossu':'Andrea Cossu',
-                'tetteh':'Joseph Tetteh',
-                'vispo':'Luca Vispo',    
-                'kouko':'Daniel Kouko',
-                'silenzi':'Christian Silenzi',
-                'arras':'Davide Arras',
-                'ragatzu':'Daniele Ragatzu',
-                'quaranta':'Danilo Quaranta',
-                'martiniello':'Antonio Martiniello',
-                'muroni':'Mattia Muroni',
-                'calamai':'Matteo Calamai',
-                'pinna s.':'Simone Pinna',
-                'piredda':'Marco Piredda',
-                'pisano':'Francesco Pisano',
-                'manca nicola':'Nicola Manca',
-                'delvecchio':'Nicolas Delvecchio',
-                'vallocchia':'Andrea Vallocchia',
-                'biancu':'Roberto Biancu',
-                'benedicic':'Zan Benedicic',
-                'dalla bernardina':'G. Dalla Bernardina',
-                'ogunseye':'R. Ogunseye',
-                'pitzalis':'Mattia Pitzalis',
-                'altare':'Giorgio Altare',
-                'mastino':'Andrea Mastino',
-                'parigi':'Giacomo Parigi',
-                'lella':'Nunzio Lella',
-                'verde':'Francesco Verde',
-                'cocco':'A. Cocco',
-                'la rosa':'Luca La Rosa',
-                'gozzi':'Simone Gozzi',
-                'demarcus':'Antonio Demarcus',
-                'candela':'Antonio Candela',
-                'giandonato':'Manuel Giandonato',
-                'travaglini':'Christian Travaglini',
-                'mancini':'Simone Mancini',
-                'boccia':'Salvatore Boccia',
-                'udho':'King Udoh',
-                'palesi':'Luca Palesi',
-                'occhioni':'Fabio Occhioni',
-                'emerson':'Emerson',
-                'renault':'C. Renault',
-                'brignani':'Fabrizio Brignani',
-                'chierico':'Luca Chierico',
-                'arboleda':'Christian Arboleda',
-                'ceter':'Damir Ceter Valencia',
-                'vergara':'Jherson Vergara Amu',
-                'iotti':'Luca Iotti',
-                'gemmi':'Filippo Gemmi',
-                'peralta':'Diego Peralta',
-                'maffei':'Claudio Maffei',
-                'caligara':'Fabrizio Caligara',
-                'belloni':'Luca Belloni',
-                'dametto':'Paolo Dametto',
-                'leverbe':'M. Leverbe',
-                'senesi':'Yuri Senesi',
-                'russu':'Marco Russu',
-                'doratiotto':'Riccardo Doratiotto',
-                'manca':'Luca Manca',
-                'cadili':'Andrea Cadili',
-                'geroni':'Enrico Geroni',
-                'scanu':'Luigi Scanu',
-                'pinna':'Giuseppe Pinna',
-                "d'agostino":"Mattia D'Agostino",
-                'marigosu':'Federico Marigosu',
-                'song':'Song-hyok Choe',
-                'secci':'Valerio Secci',
-                'ladinetti':'Riccardo Ladinetti',
-                'miceli':'Alessio Miceli',
-                'zugaro':'Davide Zugaro',
-                'feola':'Andrea Feola',
-                'sanna':'Andrea Sanna',
-                'gagliano':'Luca Gagliano'
-                
-                
-                }
-
+stats_to_instats_names = config_file['stats_to_instats_names']
 
 config_filename_1 = 'C:\\Users\\vince\\Desktop\\Contrader\\Calcio\\Olbia\\config\\stats_to_instats_names.pkl'
 a_file = open(config_filename_1, "wb")
@@ -791,10 +648,10 @@ a_file.close()
 
 
 # Importing INSTAT ------------------------------------------------------------
-instat_path = 'C:\\Users\\vince\\Desktop\\Contrader\\Calcio\\Olbia\\data\\matches\\instat'
-all_players_till_the_date = 'instat_all_players_matches_till_the_date'
-
+instat_path = config_file['paths']['instat_matches']
 all_instat_paths = [join(instat_path, f) for f in listdir(instat_path) if isfile(join(instat_path, f))]
+
+all_players_till_the_date = 'instat_all_players_matches_till_the_date'
 
 if len(all_instat_paths) > 1:
     all_instat_paths = [path  for path in all_instat_paths if (path[len(instat_path)+12:-5] == all_players_till_the_date)]
@@ -901,6 +758,5 @@ print('Missin dates in instat where "distance_from_the_match" = 0:\n{}'.format(l
 
 # JOIN ------------------------------------------------------------------------
 df = all_data.join(instat_to_join)
-
-path_to_joined =  'C:\\Users\\vince\\Desktop\\Contrader\\Calcio\\Olbia\\data\\joined\\df(evolution2).xlsx'
+path_to_joined =  config_file['paths']['joined']
 df.to_excel(path_to_joined)

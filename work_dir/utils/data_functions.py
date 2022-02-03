@@ -1,3 +1,11 @@
+import pandas as pd
+import numpy as np
+from scipy import stats
+import pandas as pd
+from datetime import datetime
+import matplotlib.pyplot as plt
+
+
 # Outlier romeval
 def outlier_removal_by_pvalue(all_data, numerical_cols, p_value = 1.1102230246251565e-16):
     prob = 1 - p_value
@@ -38,3 +46,22 @@ def convert_time_in_seconds(a_string):
         except:
             second = 0
     return second
+
+
+def plot_value_in_time(all_data = all_data, player = 'lella', value_to_plot = 'Year sin', alpha = 0.1):
+    plt.style.use('dark_background')
+    player_dates = list(all_data[all_data['name'] == player]['date'])
+    values_player = list(all_data[all_data['name'] == player][value_to_plot])
+    
+    dt_start = datetime.fromtimestamp(datetime.timestamp(player_dates[0]))
+    dt_stop = datetime.fromtimestamp(datetime.timestamp(player_dates[-1]))
+    periods = int((dt_stop - dt_start).days)
+    datelist = pd.date_range(dt_start, periods=periods).map(pd.Timestamp.timestamp)
+    
+    datelist = [datetime.fromtimestamp(int(i)) for i in datelist]
+    plt.figure(figsize = (13,5))
+    plt.scatter(datelist, [(min(values_player) - np.abs(min(values_player)*0.1)) for i in range(len(datelist))], color = 'black', marker = 'o', s = 1)
+    plt.scatter(player_dates, values_player, color= 'deepskyblue', alpha = alpha, label = value_to_plot)
+    plt.legend()
+    plt.title(player.upper())
+    plt.show()
