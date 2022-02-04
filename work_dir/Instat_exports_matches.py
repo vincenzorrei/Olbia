@@ -3,12 +3,13 @@ from selenium.webdriver.common.keys import Keys
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
+import os
 from os import listdir
 from os.path import isfile, join
 import time
 from IPython import get_ipython
 from datetime import date
-from datetime import datetime
+from datetime import datetime, timedelta
 from tqdm import tqdm
 import pandas as pd
 import json
@@ -21,6 +22,7 @@ file.close
 # Info first and last match for every player
 stats_match_path = config_file['paths']['matches']
 matches = [f for f in listdir(stats_match_path) if isfile(join(stats_match_path, f))]
+
 
 players_to_first_and_last_match = {}
 for i in matches:
@@ -38,12 +40,14 @@ for i in matches:
             if players_to_first_and_last_match[str(name)]['min'] > date:
                 players_to_first_and_last_match[str(name)]['min'] = date
 
+def datetime_to_instat_format(datetime_obj):
+    return str(datetime_obj.day) + '.' + str(datetime_obj.month) + '.' + str(datetime_obj.year)
+    
 
 file = open(".\\config.json")
 config_file = json.load(file)
 file.close
 
-chromedriver = config_file['paths']['chromedriver']
 downloads_path = config_file['paths']['instat_matches']
 
 # Sleep time per il ciclo
@@ -73,17 +77,25 @@ clearConsole()
 def download_instat_matches_for_all_players_in_period(starting_date, ending_date, processed_player_list=[], config_file=config_file, first_and_last = players_to_first_and_last_match):
     user = config_file['credentials']['instat_user']
     pw = config_file['credentials']['instat_password']
+    downloads_path = config_file['paths']['instat_matches']
     reference_team = config_file['credentials']['reference_team']
     stats_to_instats_names = config_file['stats_to_instats_names']
     instat_to_stats_names = {v:k for k, v in stats_to_instats_names.items()}
 
    # Setto il webdriver
+
     chrome_options = webdriver.ChromeOptions()
-    prefs = {'download.default_directory': downloads_path}
+    #    directory = os.getcwd().replace('\\','\\\\') + downloads_path[1:].replace('\\','\\\\')
+
+    directory = os.getcwd() + downloads_path[1:]
+    print('default_directory :', directory)
+    prefs = {'download.default_directory': directory}
     chrome_options.add_experimental_option('prefs', prefs)
+    chromedriver = config_file['paths']['chromedriver']
     driver = webdriver.Chrome(chromedriver, chrome_options=chrome_options)
     driver.maximize_window()
-
+    print(f'Default Download Directory:\n{driver.get("chrome://settings/?search=Downloads")}')
+    
     # settiamo l'attesa massima
     sleep_time = 30
     wait = WebDriverWait(driver, sleep_time)
@@ -143,6 +155,7 @@ def download_instat_matches_for_all_players_in_period(starting_date, ending_date
     class_name = '#root > div > article > div > ul > li:nth-child(3) > a'
     wait.until(EC.element_to_be_clickable(
         (By.CSS_SELECTOR, class_name))).click()
+    clearConsole()
     print('Wait : this operation may need some times\n')
 
     # The downloading function
@@ -275,27 +288,27 @@ def download_instat_matches_for_all_players_in_period(starting_date, ending_date
 
         # Clicco su 'Current season'
         try:
-            class_name = '#team-table1 > div.table-scroll-inner > div.team-stats-header.team-stats-header__small > div > div.sc-kGXeez.eJhxTi > div > span > span.styled__Caret-sc-1dwxsrr-3.cxNuZB'
-            wait.until(EC.element_to_be_clickable(
-                (By.CSS_SELECTOR, class_name))).click()
-            print('({}) : 2/5 Current season '.format(readable_season))
-        except:
             xpath = '/html/body/div[3]/div/article/section[2]/div/div/div[2]/div[1]/div/div[1]/div/span'
             time.sleep(5)
             wait_and_try_to_find_loop(wait.until(
                 EC.element_to_be_clickable((By.XPATH, xpath)))).click()
+            print('({}) : 2/5 Current season '.format(readable_season))
+        except:
+            class_name = '#team-table1 > div.table-scroll-inner > div.team-stats-header.team-stats-header__small > div > div.sc-kGXeez.eJhxTi > div > span > span.styled__Caret-sc-1dwxsrr-3.cxNuZB'
+            wait.until(EC.element_to_be_clickable(
+                (By.CSS_SELECTOR, class_name))).click()           
             print('2/5 Current season')
 
         # Clicco 'Advanced ...'
         try:
-            class_name = '#team-table1 > div.table-scroll-inner > div.team-stats-header.team-stats-header__small > div > div.sc-kGXeez.eJhxTi > div > div > ul > li:nth-child(6) > span'
-            wait.until(EC.element_to_be_clickable(
-                (By.CSS_SELECTOR, class_name))).click()
-            print('({}) : 3/5 CSS: Advanced selection of matches '.format(readable_season))
-        except:
             xpath = '/html/body/div[3]/div/article/section[2]/div/div/div[2]/div[1]/div/div[1]/div/div/ul/li[6]/span'
             wait_and_try_to_find_loop(wait.until(
                 EC.element_to_be_clickable((By.XPATH, xpath)))).click()
+            print('({}) : 3/5 Advanced selection of matches '.format(readable_season))
+        except:
+            class_name = '#team-table1 > div.table-scroll-inner > div.team-stats-header.team-stats-header__small > div > div.sc-kGXeez.eJhxTi > div > div > ul > li:nth-child(6) > span'
+            wait.until(EC.element_to_be_clickable(
+                (By.CSS_SELECTOR, class_name))).click()          
             print('3/5 XPATH: Advanced selection of matches')
 
         # Team: Attivo il flag 'Dates'
@@ -306,31 +319,27 @@ def download_instat_matches_for_all_players_in_period(starting_date, ending_date
         time.sleep(3)
         
         # From
-        try:
-            css_name = '#team-table1 > div.table-scroll-inner > div.team-stats-header.team-stats-header__small > div > div.advanced-select > div > div.advanced-select__content > div.advanced-select__filters > div.advanced-select__filters-column-season > div.sc-dVNXKj.kydHHv > div:nth-child(1) > div.react-datepicker-wrapper > div > input'
-            from_date = wait.until(
-            EC.presence_of_element_located((By.CSS_SELECTOR, css_name)))
-        except:
-            css_name = '#team-table1 > div.table-scroll-inner > div.team-stats-header.team-stats-header__small > div > div.advanced-select > div > div.advanced-select__content > div.advanced-select__filters > div.advanced-select__filters-column-season > div.sc-eoZuQF.iVCbog > div:nth-child(1) > div.react-datepicker-wrapper > div > input'
-            from_date = wait.until(
-            EC.presence_of_element_located((By.CSS_SELECTOR, css_name)))
+        css_name = 'div.advanced-select__filters-column-season > div:nth-child(3) > div:nth-child(1) > div > div > input'
+        from_date = wait.until(
+        EC.presence_of_element_located((By.CSS_SELECTOR, css_name)))
 
         from_date.send_keys(Keys.CONTROL, 'a')
         from_date.send_keys(Keys.BACKSPACE)
-        player_name_instat = instat_to_stats_names[str(player_names[i-1])]
+        from_date_match = players_to_first_and_last_match[player_name_instat]['min']
+        from_date_match = datetime_to_instat_format(from_date_match - timedelta(days=1))
+        from_date.send_keys(from_date_match)
 
-                
-        from_date.send_keys(starting_date_player)
- 
         # To
         time.sleep(3)
-        css_name = '#team-table1 > div.table-scroll-inner > div.team-stats-header.team-stats-header__small > div > div.advanced-select > div > div.advanced-select__content > div.advanced-select__filters > div.advanced-select__filters-column-season > div.sc-eoZuQF.iVCbog > div:nth-child(2) > div.react-datepicker-wrapper > div > input'
+        css_name = 'div.advanced-select__filters-column-season > div:nth-child(3) > div:nth-child(2) > div > div > input'
         to_date = wait.until(EC.presence_of_element_located(
             (By.CSS_SELECTOR, css_name)))
         to_date.send_keys(Keys.CONTROL, 'a')
         to_date.send_keys(Keys.BACKSPACE)
-        ending_date_player = players_to_first_and_last_match[player_name_instat]['max']
-        to_date.send_keys(ending_date_player)
+        
+        to_date_match = players_to_first_and_last_match[player_name_instat]['max']
+        to_date_match = datetime_to_instat_format(to_date_match + timedelta(days=1))
+        to_date.send_keys(to_date_match)
         time.sleep(10)
 
         # Premo il bottone "OK"
@@ -342,8 +351,8 @@ def download_instat_matches_for_all_players_in_period(starting_date, ending_date
         except:
 
             # Il bottone è opaco nel caso non ci sono match selezionati per il periodo e non può essere premuto
-            # print('({}) : 4/5 Matches not founded!'.format(readable_season))
-            # print('({}) : 5/5 Skipped!\n'.format(readable_season))
+            print('({}) : 4/5 Matches not founded!'.format(readable_season))
+            print('({}) : 5/5 Skipped!\n'.format(readable_season))
             driver.close()
             driver.switch_to.window(players_tab)
             continue
@@ -354,20 +363,21 @@ def download_instat_matches_for_all_players_in_period(starting_date, ending_date
             (By.XPATH, xpath))).get_attribute('innerHTML')
         text = text.replace('<span class="T9n__Text-sc-oyt3bv-0 iekKGO">Selected matches</span>: ',
                             '').replace('<span class="styled__Caret-sc-1dwxsrr-3 cxNuZB"></span>', '')
-        # print('({}) : 5/5 Founded {} matches'.format(readable_season, number_of_matches))
+        print('({}) : 5/5 Matches founded'.format(readable_season))
         time.sleep(5)
 
         len_before = len([f for f in listdir(downloads_path)
                          if isfile(join(downloads_path, f))])
 
         # Premo il formato XLS e scarico
-        # css_selector = '#team-table1 > div.table-scroll-inner > div.team-stats-header.team-stats-header__small > div > div.sc-kzSDHa.hKSUKH > a:nth-child(1)'
-        css_selector = '#team-table1 > div.table-scroll-inner > div.team-stats-header.team-stats-header__small > div > div.sc-itBpjh.drAlwl > a:nth-child(1)'
+        css_selector = 'div.team-stats-header-inner > div:nth-child(3) > a:nth-child(1)'
         xls_element = wait.until(EC.presence_of_element_located(
             (By.CSS_SELECTOR, css_selector)))
         xls_element.click()
-
+        
+        print('len_before :',len_before)
         downloaded = download_wait(downloads_path, len_before, 30)
+        print('downloaded :',downloaded)
         player_processed.append(player_names[i-1])
 
         if not downloaded:

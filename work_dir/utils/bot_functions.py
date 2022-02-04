@@ -30,7 +30,7 @@ def clearConsole():
 
 
 # Per aspettare il download
-def download_wait(directory, len_before, timeout, downloads_path = "C:\\Users\\vince\\Desktop\\Contrader\\Calcio\\Olbia\\data\\matches\\instat"):
+def download_wait(downloads_path, len_before, timeout):
     """
     Wait number of files increase.
     """
@@ -41,9 +41,10 @@ def download_wait(directory, len_before, timeout, downloads_path = "C:\\Users\\v
         time.sleep(1)
         sec += 1
         
-        if len([f for f in listdir(downloads_path) if isfile(join(downloads_path, f))]) == len_before + 1 or sec > timeout:
+        if (len([f for f in listdir(downloads_path) if isfile(join(downloads_path, f))]) == (len_before + 1)) or sec > timeout:
             time.sleep(2)
             not_matched = False
+    return (len([f for f in listdir(downloads_path) if isfile(join(downloads_path, f))]) == (len_before + 1))
 
 
 # POCO ELECANTE ma selenium delude
@@ -73,3 +74,4 @@ def right_format_date_imputation(string):
     elif len(string) == 5:
         string = string + '/' + str(datetime.now().year)
     return string
+
