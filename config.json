@@ -6,6 +6,7 @@
 	"joined":".\\data\\joined",
 	"date_to_name_to_info":".\\data\\accessories_data\\date_to_name_to_info.pkl",
 	"name_to_date_matches":".\\data\\accessories_data\\name_to_date_matches.pkl",
+    "player_to_last_instat_match":".\\data\\accessories_data\\player_to_last_instat_match.pkl",
 	"chromedriver":".\\chromedriver.exe"
 	},
 

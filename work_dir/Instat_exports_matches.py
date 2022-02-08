@@ -13,6 +13,7 @@ from datetime import datetime, timedelta
 from tqdm import tqdm
 import pandas as pd
 import json
+import pickle
 from work_dir.utils.bot_functions import clearConsole, download_wait, select_new_tab, wait_and_try_to_find_loop, an_year_later_one_day_left, right_format_date_imputation
 
 file = open(".\\config.json")
@@ -75,26 +76,34 @@ clearConsole()
 
 
 def download_instat_matches_for_all_players_in_period(starting_date, ending_date, processed_player_list=[], config_file=config_file, first_and_last = players_to_first_and_last_match):
+    file = open(".\\config.json")
+    config_file = json.load(file)
+    file.close
+    
     user = config_file['credentials']['instat_user']
     pw = config_file['credentials']['instat_password']
     downloads_path = config_file['paths']['instat_matches']
     reference_team = config_file['credentials']['reference_team']
+    player_to_last_instat_match_path = config_file['paths']['player_to_last_instat_match']
     stats_to_instats_names = config_file['stats_to_instats_names']
     instat_to_stats_names = {v:k for k, v in stats_to_instats_names.items()}
+    stored_instat = False
+    instat_already_downloaded = False
+    
+    if os.path.isfile(player_to_last_instat_match_path):
+        file = open(player_to_last_instat_match_path)
+        player_to_last_instat_match = pickle.load(file)
+        stored_instat = True
 
+    
    # Setto il webdriver
-
-    chrome_options = webdriver.ChromeOptions()
-    #    directory = os.getcwd().replace('\\','\\\\') + downloads_path[1:].replace('\\','\\\\')
-
     directory = os.getcwd() + downloads_path[1:]
-    print('default_directory :', directory)
     prefs = {'download.default_directory': directory}
+    chrome_options = webdriver.ChromeOptions()
     chrome_options.add_experimental_option('prefs', prefs)
     chromedriver = config_file['paths']['chromedriver']
     driver = webdriver.Chrome(chromedriver, chrome_options=chrome_options)
     driver.maximize_window()
-    print(f'Default Download Directory:\n{driver.get("chrome://settings/?search=Downloads")}')
     
     # settiamo l'attesa massima
     sleep_time = 30
@@ -225,16 +234,19 @@ def download_instat_matches_for_all_players_in_period(starting_date, ending_date
 
     # Dato che combina un casino con l'apertura delle nuove tab
     opened_tabs_before_player_selection = driver.window_handles
-    player_processed = processed_player_list
+    player_processed = []
+    
 
     # Ciclo per i giocatori -------------------------------------------------------
     for i in range(1, number_of_elements+1):
-
+        
+        # Giocatore: Se è stato già scaricato in questo ciclo di downlaod 
         if player_processed and (player_names[i-1] in player_processed):
-            print("({}) {}'s career yet downloaded".format(
+            print("({}) {}'s career already downloaded".format(
                 readable_season, player_names[i-1]))
             continue
         
+        # Giocatore: Check se abbia mai giocato
         try:
             player_name_instat = instat_to_stats_names[str(player_names[i-1])]
             players_to_first_and_last_match[player_name_instat]
@@ -243,30 +255,40 @@ def download_instat_matches_for_all_players_in_period(starting_date, ending_date
             never_played = True
         
         if never_played:
-            print(f'{player_names[i-1]} never played')
+            print(f'{player_names[i-1]} never played in the period')
             continue
 
-        # Giocatore: Seleziono il giocatore
-        try:
-            time.sleep(10)
-            xpath = '/html/body/div[3]/div/article/section[2]/div/div/div[2]/div[2]/table/tbody/tr[{}]/td[1]/div/div[3]/a'.format(
-                i)
-            wait.until(EC.presence_of_element_located(
-                (By.XPATH, xpath))).click()
-            print('Player selected:\n{}/{}) {}\n'.format(i,
-                  number_of_elements, player_names[i-1]))
-
-        except:
-            class_name = '#root > div > article > section.player-details > div > div > div.table-scroll-inner > div.team-stats-wrapper > table > tbody > tr:nth-child({}) > td.match-table__body-cell.with-border > div > div.match-table__body-cell.match-table__player-name > a'.format(
-                i)
-            wait.until(EC.presence_of_element_located(
-                (By.CSS_SELECTOR, class_name))).click()
-            if len(driver.window_handles) != 2:
-                print("ATTENTION!\nDidn't open the tab")
-            print('{}/{}) {}'.format(i, number_of_elements, player_names[i-1]))
+        # Giocatore: Check se abbia già scaricato fino all'ultima partita o fino a quando
+        from_date_match = players_to_first_and_last_match[player_name_instat]['min']
+        to_date_match = players_to_first_and_last_match[player_name_instat]['max']
         
-
-
+        
+        if stored_instat:
+            last_match_downloaded_instat = player_to_last_instat_match[player_name_instat]
+            last_match_downloaded_instat = datetime.strptime(last_match_downloaded_instat, '%d.%m.%Y')
+            
+            if last_match_downloaded_instat == to_date_match:
+                instat_already_downloaded = True
+            elif last_match_downloaded_instat > from_date_match:
+                from_date_match = last_match_downloaded_instat
+        
+        if instat_already_downloaded:
+            print(f'{player_names[i-1]} already downloaded')
+            continue
+        
+        from_date_match = datetime_to_instat_format(from_date_match - timedelta(days=1))
+        to_date_match = datetime_to_instat_format(to_date_match + timedelta(days=1))
+    
+                
+        # Giocatore: Seleziono il giocatore
+        time.sleep(10)
+        xpath = '/html/body/div[3]/div/article/section[2]/div/div/div[2]/div[2]/table/tbody/tr[{}]/td[1]/div/div[3]/a'.format(
+            i)
+        wait.until(EC.presence_of_element_located(
+            (By.XPATH, xpath))).click()
+        print('Player selected:\n{}/{}) {}\n'.format(i,
+                number_of_elements, player_names[i-1]))
+        
         # Giocatore: Mi sposto nell'ultima tab aperta
         opened_tabs_after_player_selection = driver.window_handles
         player_tab = select_new_tab(
@@ -274,17 +296,10 @@ def download_instat_matches_for_all_players_in_period(starting_date, ending_date
         driver.switch_to.window(player_tab)
 
         # Mi sposto in 'matches'
-        try:
-            class_name = '#root > div > article > div > ul > li:nth-child(2)'
-            wait.until(EC.element_to_be_clickable(
-                (By.CSS_SELECTOR, class_name))).click()
-            print('({}) : 1/5 MATCHES'.format(readable_season))
-        except:
-            xpath = '/html/body/div[3]/div/article/div/ul/li[2]'
-            time.sleep(5)
-            wait_and_try_to_find_loop(wait.until(
-                EC.element_to_be_clickable((By.XPATH, xpath)))).click()
-            # print('1/5 MATCHES')
+        class_name = '#root > div > article > div > ul > li:nth-child(2)'
+        wait.until(EC.element_to_be_clickable(
+            (By.CSS_SELECTOR, class_name))).click()
+        print('({}) : 1/5 MATCHES'.format(readable_season))
 
         # Clicco su 'Current season'
         try:
@@ -322,11 +337,8 @@ def download_instat_matches_for_all_players_in_period(starting_date, ending_date
         css_name = 'div.advanced-select__filters-column-season > div:nth-child(3) > div:nth-child(1) > div > div > input'
         from_date = wait.until(
         EC.presence_of_element_located((By.CSS_SELECTOR, css_name)))
-
         from_date.send_keys(Keys.CONTROL, 'a')
         from_date.send_keys(Keys.BACKSPACE)
-        from_date_match = players_to_first_and_last_match[player_name_instat]['min']
-        from_date_match = datetime_to_instat_format(from_date_match - timedelta(days=1))
         from_date.send_keys(from_date_match)
 
         # To
@@ -336,9 +348,6 @@ def download_instat_matches_for_all_players_in_period(starting_date, ending_date
             (By.CSS_SELECTOR, css_name)))
         to_date.send_keys(Keys.CONTROL, 'a')
         to_date.send_keys(Keys.BACKSPACE)
-        
-        to_date_match = players_to_first_and_last_match[player_name_instat]['max']
-        to_date_match = datetime_to_instat_format(to_date_match + timedelta(days=1))
         to_date.send_keys(to_date_match)
         time.sleep(10)
 
@@ -349,7 +358,6 @@ def download_instat_matches_for_all_players_in_period(starting_date, ending_date
                 (By.CSS_SELECTOR, class_name))).click()
             print('({}) : 4/5 "OK" button'.format(readable_season))
         except:
-
             # Il bottone è opaco nel caso non ci sono match selezionati per il periodo e non può essere premuto
             print('({}) : 4/5 Matches not founded!'.format(readable_season))
             print('({}) : 5/5 Skipped!\n'.format(readable_season))
@@ -374,10 +382,8 @@ def download_instat_matches_for_all_players_in_period(starting_date, ending_date
         xls_element = wait.until(EC.presence_of_element_located(
             (By.CSS_SELECTOR, css_selector)))
         xls_element.click()
-        
-        print('len_before :',len_before)
+
         downloaded = download_wait(downloads_path, len_before, 30)
-        print('downloaded :',downloaded)
         player_processed.append(player_names[i-1])
 
         if not downloaded:
@@ -389,7 +395,7 @@ def download_instat_matches_for_all_players_in_period(starting_date, ending_date
             print("({}) {}\'s career downloaded successfully!\n".format(
                 readable_season, player_names[i-1]))
         else:
-            print('DIOCANE DIOCANE DIOCANE DIOCANE DIOCANE DIOCANE')
+            print("({}) {}\'s downloaded NOT successfully!\n")
             player_processed = player_processed[:-1]
 
         # Posso chiudere questa tab e spostarmi su quella di partenza
@@ -408,6 +414,7 @@ today_datetime_format = datetime.today()
 
 if not start_date:
     # Ciclo per stagionai dal 15 Agosto 20XX al 14 Agosto 20XX + 1
+    # Selenium non riesce ad accedere a tutti i giocatori contemporaneamente
     starting_date = "15.08.2015"
     ending_date = an_year_later_one_day_left(starting_date)
     ending_date_datetime_format = datetime.strptime(ending_date, '%d.%m.%Y')
@@ -436,10 +443,50 @@ times = (script_end - script_start)/60
 # driver.quit()
 print('\nDonwload completed!\nGood job asshole...')
 
-
-# Concatenating values --------------------------------------------------------
+# Removing possible duplicates
 all_files_paths = [join(downloads_path, f) for f in listdir(
     downloads_path) if isfile(join(downloads_path, f))]
+
+for i in all_files_paths:
+    if '(1)' in i:
+        os.remove(i)
+        
+# Saving last saved match -----------------------------------------------------
+all_files_paths = [join(downloads_path, f) for f in listdir(
+    downloads_path) if isfile(join(downloads_path, f))]
+
+def player_from_filename(filename):
+    return filename[25:-5]
+
+def last_date_from_list(a_list):
+    res = datetime.strptime( '01/01/2000', '%d/%m/%Y')
+    for i in a_list:
+        i = str(i)
+        if len(i) == 5: # 01/01
+            tmp = datetime.strptime( i+'/2022', '%d/%m/%Y')
+        elif len(i) == 8: # 01/01/01
+            tmp = datetime.strptime( i, '%d/%m/%y')
+        if tmp > res:
+            res = tmp
+    res =  str(res)[8:10]+'.'+ str(res)[5:7] +'.'+ str(res)[:4]
+    return res
+
+
+player_to_last_instat_match = {}
+
+for i in all_files_paths:
+    player = player_from_filename(i)
+    single_data = pd.read_excel(i)
+    last_match = last_date_from_list(list(single_data['Date']))
+    player_to_last_instat_match[player] = last_match
+    
+player_to_last_downloaded_match_path = config_file['paths']['player_to_last_instat_match']
+first_file = open(player_to_last_downloaded_match_path, "wb")
+pickle.dump(player_to_last_downloaded_match_path, first_file)
+first_file.close()
+    
+        
+# Concatenating values --------------------------------------------------------
 first = True
 all_new_data = []
 all_players_till_the_date_before_full_path = None
@@ -450,6 +497,7 @@ for complete_file_path in tqdm(all_files_paths):
     # Get the filename
     file_extension = -5
     filename = complete_file_path[len(downloads_path)+1:file_extension]
+    
     if filename[11:] == all_players_till_the_date:
         all_players_till_the_date_before_full_path = complete_file_path
         continue

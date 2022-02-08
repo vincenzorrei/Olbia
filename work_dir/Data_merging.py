@@ -6,6 +6,7 @@ from datetime import datetime
 import time
 import pandas as pd
 import numpy as np
+import json
 from work_dir.utils.data_functions import convert_time_in_seconds, outlier_removal_by_pvalue, plot_value_in_time
 
 file = open(".\\config.json")

@@ -75,3 +75,4 @@ def right_format_date_imputation(string):
         string = string + '/' + str(datetime.now().year)
     return string
 
+
