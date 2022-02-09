@@ -1,7 +1,7 @@
 ## Processo di acquisizione e aggiornamento dati
 Questo progetto vede sostanzialmente due macro fasi:
-* 1) Acquisizione dei dati
-* 2) Concatenazione dei dati
+<br />1) Acquisizione dei dati
+<br />2) Concatenazione dei dati
 
 ### Acquisizione dei dati
 L'acquisizione dei dati è affidata a dei bot che operano su due diverse piattaforme:
@@ -12,22 +12,17 @@ ma li analizzeremo uno per volta.
 
 #### Stats dynamics
 <br />1.1.1) Bot Stats dynamics per i trainings
-Questo è il primo bot che viene lanciato in ordine anche temporale.
+<br />Questo è il primo bot che viene lanciato in ordine anche temporale.
 Insieme all'acquisizione vengono operate anche alcune modifiche per evitare duplicati per
 quanto possibile oltre che aggiunte informazioni rispetto all'ordine delle esercitazioni.
 
 In output vengono prodotti inoltre due file .pkl che saranno salvati nella cartella 
 .\data\accessories_data e che serviranno per le operazioni aggiuntive:
-<br />- train_date_name_info.pkl:
-    {date:{expected name : {info}}}
-    un dizionario di dizionari che per gli allenamenti dalla data, ci porta alle esercitazioni
-    alle informazioni aggiuntive;
-<br />- train_name_date.pkl:
-    {expected name : date}
-    un dizionario che restituisce la data per l'allenamento individuato.
+- train_date_name_info.pkl:
+- train_name_date.pkl:
 
 <br />1.1.2) Bot Stats dynamics per i matches
-E' il secondo bot ad essere lanciato.
+<br />E' il secondo bot ad essere lanciato.
 Speculare al bot per gli allenamenti ma con le dovute differenze.
 Anche questo produce i due file output che prendono il nome di 
 - match_date_name_info.pkl;
@@ -35,5 +30,5 @@ Anche questo produce i due file output che prendono il nome di
 
 #### Instat
 <br />1.2) Bot Instat 
-Il bot che lavora sul sito Instat è molto lento e non affidabile al 100% dal momento che il sito,
+<br />Il bot che lavora sul sito Instat è molto lento e non affidabile al 100% dal momento che il sito,
 purtroppo, non sempre risponde agli stessi input con gli stessi output.
