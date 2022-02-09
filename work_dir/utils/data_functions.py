@@ -48,7 +48,7 @@ def convert_time_in_seconds(a_string):
     return second
 
 
-def plot_value_in_time(all_data = all_data, player = 'lella', value_to_plot = 'Year sin', alpha = 0.1):
+def plot_value_in_time(all_data, player = 'lella', value_to_plot = 'Year sin', alpha = 0.1):
     plt.style.use('dark_background')
     player_dates = list(all_data[all_data['name'] == player]['date'])
     values_player = list(all_data[all_data['name'] == player][value_to_plot])
