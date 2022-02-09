@@ -39,7 +39,6 @@ date_to_name_to_info_matches = pickle.load(a_file)
 a_file = open(config_file['paths']['name_to_date_matches'], "rb")
 name_to_date_matches = pickle.load(a_file)
 
-
 first = True
 all_data = []
 data_variables_lists = []
@@ -62,7 +61,6 @@ for folder in [trainings_path, matches_path]:
         file_extension = -4
         filename = complete_data_path[len(folder)+1 :file_extension]
 
-        
         # Distinction for exercises order between matches and trainings
         if  folder == trainings_path:
             
@@ -74,7 +72,7 @@ for folder in [trainings_path, matches_path]:
             order = date_to_name_to_info_trainings[date][filename]['ord']
             single_data['naive_order'] = [order for i in range(single_data.shape[0])]
             
-            # 3) Group name
+            # 3) Assign group name
             group_name = date_to_name_to_info_trainings[date][filename]['group_name']
             single_data['group_name'] = [group_name for i in range(single_data.shape[0])]
    
@@ -97,7 +95,7 @@ for folder in [trainings_path, matches_path]:
             # 2) Assign 0 to all match event
             single_data['naive_order'] = [0 for i in range(single_data.shape[0])]
 
-            # 3) Group name
+            # 3) Assign group name
             group_name = date_to_name_to_info_matches[date][filename]['group_name']
             single_data['group_name'] = [group_name for i in range(single_data.shape[0])]
    
@@ -131,23 +129,14 @@ for folder in [trainings_path, matches_path]:
             all_data = pd.concat([all_data, single_data])
 
 
-# Columns trainingn alert
-if type(data_variables_lists[0]) == list:
-    print('!!! ALERT!!!\nDifferent columns setting in matches dataset:\n', len(data_variables_lists))
-else:
-    print('\nData loading and concatenation successfully completed!\n')
-
-
 # Change columns names
-all_data = all_data.rename(columns={'Unnamed: 0': "name"})
-
 all_data['T_conversion'] = all_data['T'].map(convert_time_in_seconds)
+all_data = all_data.rename(columns={'Unnamed: 0': "name"})
 all_data = all_data.drop(['Unnamed: 30'], axis = 1)
 
 # Series types
 dtypes = [str(all_data[col].dtype) for col in all_data.columns]
 col_to_dtypes = dict(zip(all_data.columns, dtypes))
-
 numerical_classes = ['int64', 'float64', 'bool']
 
 for k, v in col_to_dtypes.items():
@@ -156,7 +145,6 @@ for k, v in col_to_dtypes.items():
 
 # Unique index 
 all_data.index = list(range(all_data.shape[0]))
-
 
 # REMOVINGS -------------------------------------------------------------------
 # 1) Duplicates remove

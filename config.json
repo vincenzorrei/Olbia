@@ -4,8 +4,13 @@
 	"matches":".\\data\\stats\\matches",
 	"instat_matches":".\\data\\instat",
 	"joined":".\\data\\joined",
-	"date_to_name_to_info":".\\data\\accessories_data\\date_to_name_to_info.pkl",
-	"name_to_date_matches":".\\data\\accessories_data\\name_to_date_matches.pkl",
+
+	"train_date_name_info":".\\data\\accessories_data\\train_date_name_info.pkl",
+    "train_name_date":".\\data\\accessories_data\\train_name_date.pkl",
+
+	"match_date_name_info":".\\data\\accessories_data\\match_date_name_info.pkl",
+    "match_name_date":".\\data\\accessories_data\\match_name_date.pkl",
+
     "player_to_last_instat_match":".\\data\\accessories_data\\player_to_last_instat_match.pkl",
 	"chromedriver":".\\chromedriver.exe"
 	},

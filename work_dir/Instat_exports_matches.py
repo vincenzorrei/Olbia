@@ -447,14 +447,11 @@ print('\nDonwload completed!\nGood job asshole...')
 all_files_paths = [join(downloads_path, f) for f in listdir(
     downloads_path) if isfile(join(downloads_path, f))]
 
-for i in all_files_paths:
-    if '(1)' in i:
-        os.remove(i)
+#for i in all_files_paths:
+#    if '(1)' in i:
+#        os.remove(i)
         
 # Saving last saved match -----------------------------------------------------
-all_files_paths = [join(downloads_path, f) for f in listdir(
-    downloads_path) if isfile(join(downloads_path, f))]
-
 def player_from_filename(filename):
     return filename[25:-5]
 
@@ -484,8 +481,8 @@ player_to_last_downloaded_match_path = config_file['paths']['player_to_last_inst
 first_file = open(player_to_last_downloaded_match_path, "wb")
 pickle.dump(player_to_last_downloaded_match_path, first_file)
 first_file.close()
-    
-        
+
+
 # Concatenating values --------------------------------------------------------
 first = True
 all_new_data = []

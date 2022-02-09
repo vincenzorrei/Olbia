@@ -66,11 +66,11 @@ total_len = (pages - 1) * len_full_page + len_last_page
 if 'file_to_download_in_this_tournment' not in locals():
     file_to_download_in_this_tournment = total_len - number_of_files_already_downloaded
 
-if 'name_to_date' not in locals():
-    name_to_date = {}
+if 'train_name_date' not in locals():
+    train_name_date = {}
 
-if 'date_to_name_to_info' not in locals():
-    date_to_name_to_info = {}
+if 'train_date_name_info' not in locals():
+    train_date_name_info = {}
 
 if 'conteggio_giornaliero' not in locals():
     conteggio_giornaliero = 0
@@ -144,12 +144,12 @@ while there_is_a_next_page:
         # Se cambiata la data, per la data precedente sistemo il conteggio degli esercizi che ora è al contrario
         if date != old_date and old_date != 0:
             conteggio_giornaliero = 0
-            exercise_in_the_day = list(date_to_name_to_info[old_date].keys())
-            inverted_order = [date_to_name_to_info[old_date][ex]['ord'] for ex in exercise_in_the_day]
+            exercise_in_the_day = list(train_date_name_info[old_date].keys())
+            inverted_order = [train_date_name_info[old_date][ex]['ord'] for ex in exercise_in_the_day]
             true_order = list(reversed(inverted_order))
                 
             for ind in range(len(exercise_in_the_day)):
-                date_to_name_to_info[old_date][exercise_in_the_day[ind]]['ord'] = true_order[ind]
+                train_date_name_info[old_date][exercise_in_the_day[ind]]['ord'] = true_order[ind]
         
         
         # Puliamo il terminal
@@ -175,11 +175,11 @@ while there_is_a_next_page:
         conteggio_giornaliero += 1
         
         # Salvo nei dizionari
-        name_to_date[expected_name] = date
+        train_name_date[expected_name] = date
         
         if conteggio_giornaliero == 1:
-            date_to_name_to_info[date] = {}
-        date_to_name_to_info[date][expected_name] = {'ord':conteggio_giornaliero,
+            train_date_name_info[date] = {}
+        train_date_name_info[date][expected_name] = {'ord':conteggio_giornaliero,
                                                      'group_name':group_name,
                                                      'session_name':session_name,
                                                      'notes':notes}
@@ -235,43 +235,43 @@ while there_is_a_next_page:
         icon_to_next_page.click()
         
     except:
-        exercise_in_the_day = list(date_to_name_to_info[date].keys())
-        inverted_order = [date_to_name_to_info[date][ex]['ord'] for ex in exercise_in_the_day]
+        exercise_in_the_day = list(train_date_name_info[date].keys())
+        inverted_order = [train_date_name_info[date][ex]['ord'] for ex in exercise_in_the_day]
         true_order = list(reversed(inverted_order))
             
         for ind in range(len(exercise_in_the_day)):
-            date_to_name_to_info[date][exercise_in_the_day[ind]]['ord'] = true_order[ind]
+            train_date_name_info[date][exercise_in_the_day[ind]]['ord'] = true_order[ind]
         
         print("\n\nDone!\n")
         driver.quit()
         there_is_a_next_page = False
 
 
-config_filename_1 = config_file['paths']['date_to_name_to_info']
-config_filename_2 = config_file['paths']['name_to_date_matches']
+config_filename_1 = config_file['paths']['train_date_name_info']
+config_filename_2 = config_file['paths']['train_name_date']
 
 try:
     # Trainings: Import dict of dict {date:{expected name : {info}}} and update
     first_file = open(config_filename_1, "rb")
-    date_to_name_to_info_trainings = pickle.load(first_file)
+    train_date_name_info_old = pickle.load(first_file)
     first_file.close()
-    date_to_name_to_info.update(date_to_name_to_info_trainings)
+    train_date_name_info.update(train_date_name_info_old)
 
     # Trainings: Import dict {expected name : date} and update
     second_file = open(config_filename_2, "rb")
-    name_to_date_exercises = pickle.load(second_file)
+    train_name_date_exercises = pickle.load(second_file)
     second_file.close()
-    name_to_date.update(name_to_date_exercises)
+    train_name_date.update(train_name_date_exercises)
  
 except:
     pass
 
 first_file = open(config_filename_1, "wb")
-pickle.dump(date_to_name_to_info, first_file)
+pickle.dump(train_date_name_info, first_file)
 first_file.close()
 
 second_file = open(config_filename_2, "wb")
-pickle.dump(name_to_date, second_file)
+pickle.dump(train_name_date, second_file)
 second_file.close()
 
 print('Ancillary information saved!')

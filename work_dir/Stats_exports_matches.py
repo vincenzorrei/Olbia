@@ -66,11 +66,11 @@ total_len = (pages - 1) * len_full_page + len_last_page
 if 'file_to_download_in_this_tournment' not in locals():
     file_to_download_in_this_tournment = total_len - number_of_files_yet_downloaded
     
-if 'name_to_date' not in locals():
-    name_to_date = {}
+if 'match_name_date' not in locals():
+    match_name_date = {}
     
-if 'date_to_match_to_info' not in locals():
-    date_to_match_to_info = {}
+if 'match_date_name_info' not in locals():
+    match_date_name_info = {}
     
 if 'files_count' not in locals():
     files_count = 0
@@ -136,15 +136,15 @@ while there_is_a_next_page:
             print('Total expected replicas:\n{}\n'.format(len(expected_replicas)))
         
         # Dizionario dal nome ci da la data
-        name_to_date[expected_name] = date
+        match_name_date[expected_name] = date
         
         # Conteggio file salvati
         files_count += 1
         
         # Dizionario data - nome - info
         if date != old_date:
-            date_to_match_to_info[date] = {}
-        date_to_match_to_info[date][expected_name] = {'group_name':group_name,
+            match_date_name_info[date] = {}
+        match_date_name_info[date][expected_name] = {'group_name':group_name,
                                                       'session_name':session_name,
                                                       'notes':notes}
         
@@ -215,31 +215,31 @@ while there_is_a_next_page:
         driver.quit()
         there_is_a_next_page = False
     
-config_filename_1 = config_file['paths']['date_to_name_to_info']
-config_filename_2 = config_file['paths']['name_to_date_matches']
+config_filename_1 = config_file['paths']['match_date_name_info']
+config_filename_2 = config_file['paths']['match_name_date']
 
 try:
     # Trainings: Import dict of dict {date:{expected name : {info}}}
     first_file = open(config_filename_1, "rb")
-    date_to_match_to_info_prec = pickle.load(first_file)
+    match_date_name_info_old = pickle.load(first_file)
     first_file.close()
-    date_to_match_to_info.update(date_to_match_to_info_prec)
+    match_date_name_info.update(match_date_name_info_old)
 
     # Trainings: Import dict {expected name : date}
     second_file = open(config_filename_2, "rb")
-    name_to_date_matches = pickle.load(second_file)
+    match_name_date_old = pickle.load(second_file)
     second_file.close()
-    name_to_date.update(name_to_date_matches)
+    match_name_date.update(match_name_date_old)
     
 except:
     pass
 
 first_file = open(config_filename_1, "wb")
-pickle.dump(date_to_match_to_info, first_file)
+pickle.dump(match_date_name_info, first_file)
 first_file.close()
 
 second_file = open(config_filename_2, "wb")
-pickle.dump(name_to_date, second_file)
+pickle.dump(match_name_date, second_file)
 second_file.close()
 
 print('Ancillary information saved!')
