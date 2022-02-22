@@ -9,9 +9,11 @@ import time
 from IPython import get_ipython
 from datetime import date
 from datetime import datetime
-from tqdm import tqdm
-import pandas as pd
 
+
+def datetime_to_instat_format(datetime_obj):
+    return str(datetime_obj.day) + '.' + str(datetime_obj.month) + '.' + str(datetime_obj.year)
+    
 
 # Standardizzo il nome per il salvataggio e il matching
 def standardize_name(string):

@@ -1,4 +1,4 @@
-## Processo di acquisizione e aggiornamento dati
+    ## Processo di acquisizione e aggiornamento dati
 Questo progetto vede sostanzialmente due macro fasi:
 <br />1) Acquisizione dei dati
 <br />2) Concatenazione dei dati

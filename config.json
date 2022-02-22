@@ -3,7 +3,7 @@
 	"trainings":".\\data\\stats\\trainings",
 	"matches":".\\data\\stats\\matches",
 	"instat_matches":".\\data\\instat",
-	"joined":".\\data\\joined",
+	"joined":".\\data\\joined\\joined.xlsx",
 
 	"train_date_name_info":".\\data\\accessories_data\\train_date_name_info.pkl",
     "train_name_date":".\\data\\accessories_data\\train_name_date.pkl",
@@ -12,8 +12,13 @@
     "match_name_date":".\\data\\accessories_data\\match_name_date.pkl",
 
     "player_to_last_instat_match":".\\data\\accessories_data\\player_to_last_instat_match.pkl",
+	 "some_statistics":".\\outputs\\some_statistics.xlsx",
 	"chromedriver":".\\chromedriver.exe"
 	},
+	
+"default_names":{
+    "data_aggregation_name":"data_aggregation.xlsx"
+    },
 
 "credentials":{
 	"user":"olbiapass65",
@@ -102,7 +107,16 @@
     "sanna":"Andrea Sanna",
     "gagliano":"Luca Gagliano"
 
-}
+},
+
+"selected_variables" :
+                    ["D", "Drel", "D_SHI", "D_AccHI", "D_DecHI",
+                    "D_MPHI", "AMP", "%ED", "D_S6", "D_A8", "D_A1", "%Tempo Recupero",
+                    "D_MP5", "%D_A1", "%D_A8", "%D_AccHI", "%D_DecHI", "%D_MPHI",
+                    "%D_SHI", "ND_A1", "NU_A8", "NU_AccHI", "ND_DecHI", "NU_S6",
+                    "ND_DecHI.1", "D_S4", "%AI", "SMax (kmh)","T_conversion",
+                    "notes", "session"]
+
 
 
 }

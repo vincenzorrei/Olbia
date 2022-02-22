@@ -1,4 +1,5 @@
-from os import listdir
+from os import listdir, chdir
+# chdir('..\\')
 from os.path import isfile, join
 from tqdm import tqdm
 import pickle
@@ -7,43 +8,52 @@ import time
 import pandas as pd
 import numpy as np
 import json
-from work_dir.utils.data_functions import convert_time_in_seconds, outlier_removal_by_pvalue, plot_value_in_time
+from work_dir.utils.data_functions import convert_time_in_seconds, outlier_removal_by_pvalue, plot_value_in_time, correct_sessione_and_esercizio
 
 file = open(".\\config.json")
 config_file = json.load(file)
 file.close
 
-start_script_time = time.time()
-
 # Paths to data ---------------------------------------------------------------
 trainings_path = config_file['paths']['trainings']
-matches_path = config_file['paths']['trainings']
+matches_path = config_file['paths']['matches']
 
 # Check that they are files and list their complete paths
 all_trainings_paths = [join(trainings_path, f) for f in listdir(trainings_path) if isfile(join(trainings_path, f))]
 all_matches_path = [join(matches_path, f) for f in listdir(matches_path) if isfile(join(matches_path, f))]
 
 # Trainings: Import dict of dict {date:{expected name : {info}}}
-a_file = open(config_file['paths']['date_to_name_to_info'], "rb")
-date_to_name_to_info_trainings = pickle.load(a_file)
+a_file = open(config_file['paths']['train_date_name_info'], "rb")
+train_date_name_info = pickle.load(a_file)
 
 # Trainings: Import dict {expected name : date}
-a_file = open(config_file['paths']['date_to_name_to_info'], "rb")
-name_to_date_exercises = pickle.load(a_file)
+a_file = open(config_file['paths']['train_name_date'], "rb")
+train_name_date = pickle.load(a_file)
 
 # Matches: Import dict {date:{expected name : {info}}}
-a_file = open(config_file['paths']['date_to_match_to_info'], "rb")
-date_to_name_to_info_matches = pickle.load(a_file)
+a_file = open(config_file['paths']['match_date_name_info'], "rb")
+match_date_name_info = pickle.load(a_file)
 
 # Matches: Import dict {expected name : date}
-a_file = open(config_file['paths']['name_to_date_matches'], "rb")
-name_to_date_matches = pickle.load(a_file)
+a_file = open(config_file['paths']['match_name_date'], "rb")
+match_name_date = pickle.load(a_file)
 
 first = True
 all_data = []
 data_variables_lists = []
 missing_in_expected_name_to_date = 0
 missing_in_date_to_training_name_and_ord = 0
+match_not_found_number = 0
+train_not_found_number = 0
+failed_paths = []
+cols_kinds = []
+
+cols_selection = ['Unnamed: 0', 'D', 'Drel', 'D_SHI', 'D_AccHI', 'D_DecHI', 'D_MPHI',
+       'AMP', '%ED', 'D_S6', 'D_A8', 'D_A1', '%Tempo Recupero', 'D_MP5', 'T',
+       '%D_A1', '%D_A8', '%D_AccHI', '%D_DecHI', '%D_MPHI', '%D_SHI', 'ND_A1',
+       'NU_A8', 'NU_AccHI', 'ND_DecHI', 'NU_S6', 'ND_DecHI.1', 'D_S4', '%AI',
+       'SMax (kmh)', 'date', 'naive_order', 'group_name',
+       'session', 'notes', 'from']
 
 # Creation of a single dataset for trainings
 for folder in [trainings_path, matches_path]:
@@ -57,6 +67,7 @@ for folder in [trainings_path, matches_path]:
     for complete_data_path in tqdm(all_data_paths):
         single_data = pd.read_csv(complete_data_path, sep = ";",  decimal=",")
         
+        
         # Get the filename
         file_extension = -4
         filename = complete_data_path[len(folder)+1 :file_extension]
@@ -64,51 +75,74 @@ for folder in [trainings_path, matches_path]:
         # Distinction for exercises order between matches and trainings
         if  folder == trainings_path:
             
+            try:
+                train_name_date[filename]
+                date = train_name_date[filename]
+                order = train_date_name_info[date][filename]['ord']
+            except:
+                train_not_found_number += 1
+                continue
+
             # 1) Assign the date
-            date = name_to_date_exercises[filename]
+            date = train_name_date[filename]
             single_data['date'] = [date for i in range(single_data.shape[0])]
             
             # 2) Assign the order to all observations in the file
-            order = date_to_name_to_info_trainings[date][filename]['ord']
+            order = train_date_name_info[date][filename]['ord']
             single_data['naive_order'] = [order for i in range(single_data.shape[0])]
             
             # 3) Assign group name
-            group_name = date_to_name_to_info_trainings[date][filename]['group_name']
+            group_name = train_date_name_info[date][filename]['group_name']
             single_data['group_name'] = [group_name for i in range(single_data.shape[0])]
    
             # 4) Assign session
-            session = date_to_name_to_info_trainings[date][filename]['session_name']
+            session = train_date_name_info[date][filename]['session_name']
             single_data['session'] = [session for i in range(single_data.shape[0])]
 
             # 5) Assign notes
-            notes = date_to_name_to_info_trainings[date][filename]['notes']
+            notes = train_date_name_info[date][filename]['notes']
             single_data['notes'] = [notes for i in range(single_data.shape[0])]
 
             # 6) Note the source dataset
             single_data['from'] = ['trainings' for i in range(single_data.shape[0])]
-        
+            
+            single_data = single_data[cols_selection]
+
+            if first:
+                first_cols = single_data.columns
+            elif (first_cols != single_data.columns).any():
+                print(single_data.columns)       
+            
         else:
+            try:
+                match_name_date[filename]
+            except:
+                match_not_found_number += 1
+                continue
+            
             # 1) Assign the date
-            date = name_to_date_matches[filename]
+            date = match_name_date[filename]
             single_data['date'] = [date for i in range(single_data.shape[0])]
             
             # 2) Assign 0 to all match event
             single_data['naive_order'] = [0 for i in range(single_data.shape[0])]
 
             # 3) Assign group name
-            group_name = date_to_name_to_info_matches[date][filename]['group_name']
+            group_name = match_date_name_info[date][filename]['group_name']
             single_data['group_name'] = [group_name for i in range(single_data.shape[0])]
    
             # 4) Assign session
-            session = date_to_name_to_info_matches[date][filename]['session_name']
+            session = match_date_name_info[date][filename]['session_name']
             single_data['session'] = [session for i in range(single_data.shape[0])]
 
             # 5) Assign notes
-            notes = date_to_name_to_info_matches[date][filename]['notes']
+            notes = match_date_name_info[date][filename]['notes']
             single_data['notes'] = [notes for i in range(single_data.shape[0])]
 
             # 6) Note the source dataset            
             single_data['from'] = ['matches' for i in range(single_data.shape[0])]
+            
+            single_data = single_data[cols_selection]
         
         # Concatenation
         data_columns_list = list(single_data.columns)
@@ -124,15 +158,26 @@ for folder in [trainings_path, matches_path]:
                 
                 # Annotate different columns lists
                 data_variables_lists.append(data_columns_list)
-    
-            # Concatenation        
-            all_data = pd.concat([all_data, single_data])
 
+            if (len(first_cols) != len(single_data.columns)):
+                print(first_cols)
+                print(single_data.columns)
+                break
+            # Concatenation        
+            # all_data = pd.concat([all_data, single_data])
+            all_data = all_data.append(single_data, ignore_index=True)
+            
+print(f'Matches not found: {match_not_found_number}')
+print(f'Trainings not found: {train_not_found_number}')
+print(f'All data columns: {all_data.columns}')
+print(f'all_data shape: {all_data.shape[0]}')
+
+all_data.describe().transpose()
 
 # Change columns names
 all_data['T_conversion'] = all_data['T'].map(convert_time_in_seconds)
 all_data = all_data.rename(columns={'Unnamed: 0': "name"})
-all_data = all_data.drop(['Unnamed: 30'], axis = 1)
+# all_data = all_data.drop(['Unnamed: 30', 'Unnamed: 41'], axis = 1)
 
 # Series types
 dtypes = [str(all_data[col].dtype) for col in all_data.columns]
@@ -208,7 +253,7 @@ all_data['Year cos'] = np.cos(timestamp_s * (2 * np.pi / year))
 
 # print(set(all_data['name']))
 # print(all_data.columns)
-plot_value_in_time(player = 'giandonato', value_to_plot = '%Tempo Recupero', alpha = 0.2)
+plot_value_in_time(all_data, player = 'giandonato', value_to_plot = '%Tempo Recupero', alpha = 0.2)
 
 
 # 5) Friendly match management 
@@ -296,8 +341,6 @@ warnings.filterwarnings("ignore", 'This pattern has match groups')
 df_to_concat = pd.DataFrame()
 indexes_to_remove_from_all_data = []
 
-checkpoint_full_match = all_data
-all_data = checkpoint_full_match
 presences = 0
 empties = 0
 concat = 0
@@ -372,20 +415,13 @@ for player in tqdm(players):
             else:
                 print(all_data[(all_data['name']==player) & (all_data['from'] == 'matches') & (all_data['date'] == date)])
 
-if all_data[all_data['from'] == 'matches'].shape[0] == presences:
-    print('Single data for match assigned!')
-else:
-    number_of_matches_event_before_concatenation = all_data[all_data['from'] == 'matches'].shape[0]
-    len_after = df_to_concat.shape[0] + len([i for i in list(all_data.index) if ( i not in indexes_to_remove_from_all_data)])
-    number_of_matches_after_before_concatenation = number_of_matches_event_before_concatenation - len(indexes_to_remove_from_all_data) + df_to_concat.shape[0]
-    print('\n   Len before all_data:', all_data.shape[0])
-    print('\n   Number of match event after concatenation:', number_of_matches_event_before_concatenation)
-    print(' - Invalid indexes detected:',len(indexes_to_remove_from_all_data))
-    print(' + Df_to_concat len:',df_to_concat.shape[0])
-    print(' = Number of match event after concatenation:', number_of_matches_after_before_concatenation)
-    print('   Number of presences:', presences)
-    print(' = Differences presences - matches afetr correction:',presences - number_of_matches_after_before_concatenation)
 
+number_of_matches_event_before_concatenation = all_data[all_data['from'] == 'matches'].shape[0]
+len_after = df_to_concat.shape[0] + len([i for i in list(all_data.index) if ( i not in indexes_to_remove_from_all_data)])
+number_of_matches_after_before_concatenation = number_of_matches_event_before_concatenation - len(indexes_to_remove_from_all_data) + df_to_concat.shape[0]
+
+if (presences - number_of_matches_after_before_concatenation == 0):
+ print('Correctly merged!')
 
 valid_indexes = [i for i in list(all_data.index) if ( i not in indexes_to_remove_from_all_data)]
 all_data = all_data.iloc[valid_indexes]
@@ -413,24 +449,24 @@ all_data.index = list(range(all_data.shape[0]))
 
 all_data['order'] = [0 for i in range(all_data.shape[0])]
 full_training ='full t'
-
 duplicates_index = []
 indexes_to_remove_from_all_data = []
 df_to_concat = pd.DataFrame()
 
-
-
 # For a single player
 for player in players:
-    print('\n{}/{}) Player: {}'.format(players.index(player) + 1, len(players), player.upper()))
+    print('{}/{}) Player: {}'.format(players.index(player) + 1, len(players), player.upper()))
     time.sleep(1)
-    
+
     # For a date
-    for date in tqdm(list(set(all_data['date'][all_data['name']==player]))):
+    for date in list(set(all_data['date'][all_data['name']==player])):
+        
         
         # Player in the Date in the Morning and Afternoon (as not Morning)
         morning_player_df = all_data.loc[(all_data['name']==player) & (all_data['date']==date) & (all_data['pomeriggio']==0)]
-        afternoon_player_df = all_data.loc[(all_data['name']==player) & (all_data['date']==date) & (~(all_data['pomeriggio']==0))]
+        afternoon_player_df = all_data.loc[(all_data['name']==player) & (all_data['date']==date) & ((all_data['pomeriggio']==1))]
+        
+        correctness = all_data.loc[(all_data['name']==player) & (all_data['date']==date)].shape[0] == (morning_player_df.shape[0] + afternoon_player_df.shape[0])
 
         for morning_or_afternoon_df in [morning_player_df, afternoon_player_df]:
             
@@ -451,7 +487,6 @@ for player in players:
                 friendly =  morning_or_afternoon_df[friendly_conditions]
                 not_selected_option = True
                 
-
                     
                 # 2.1) FULL MATCH : If he appears in at last one 'full match' of 'fm' or 'sostituzioni' in 'session'
                 for selected_option in [full_match, fm, sostituzioni]:
@@ -496,7 +531,6 @@ for player in players:
             
                     # 2.3) 15' minutes : fortunately, never matched a duplicate and being residuals there's no need to check for indexes_to_remove
                     elif not friendly.empty:
-                        # print(all_data[(plr_mtc_dt)])
                         indexes_to_remove = list(friendly.index)
                         indexes_to_remove_from_all_data.extend(indexes_to_remove)
                         concat +=1
@@ -512,8 +546,6 @@ for player in players:
                 
                 # 3.1) If we have more than one 'full training' we take the last
                 if morning_or_afternoon_df[morning_or_afternoon_df['session'].str.contains(full_training) == True].shape[0] > 1:
-                    
-                    
                     last_full_training_session = sorted(list(morning_or_afternoon_df[full_training_condition]['session']))[-1]
                     
                     # Select the Distance
@@ -542,7 +574,15 @@ for player in players:
                     if not morning_or_afternoon_df['session'].str.contains(full_training).any() :
                         all_data.at[morning_or_afternoon_df.index, 'order'] = 1
 
-all_data[all_data['name'] == 'brignani']
+# Full training column
+all_data['full_training'] = [0 for i in range(all_data.shape[0])]
+cond1 = (all_data['from'] != 'matches')
+cond2 = (all_data['session'].str.contains('full t'))
+full_training_index = all_data[cond1 & cond2].index
+all_data['full_training'] = [0  if (i not in full_training_index) else 1 for i in range(all_data.shape[0])]
+    
+print(all_data.describe())
+
 
 # Time computing
 end_time = time.time()
@@ -601,8 +641,13 @@ print('Copy saved as "all_data_copy"')
 all_data_copy = all_data
 
 # Some statistics -------------------------------------------------------------
-print(all_data.describe().transpose())
-
+# pd.set_option('display.max_rows', 200)
+# pd.set_option('display.max_columns', 200)
+# pd.set_option('display.width', 100)
+# print(all_data.describe().transpose())
+# somes_statistics = all_data.describe().transpose()
+# some_statistics_path = config_file['paths']['some_statistics']
+# somes_statistics.to_excel(some_statistics_path)
 
 # Dicts
 players_name = set(list(all_data['name']))
@@ -621,14 +666,9 @@ for player in players_name:
 
 stats_to_instats_names = config_file['stats_to_instats_names']
 
-config_filename_1 = 'C:\\Users\\vince\\Desktop\\Contrader\\Calcio\\Olbia\\config\\stats_to_instats_names.pkl'
-a_file = open(config_filename_1, "wb")
-pickle.dump(stats_to_instats_names, a_file)
-a_file.close()
+player_to_last_instat_match_path = config_file['paths']['player_to_last_instat_match']
 
-stats_names_to_first_and_last_match_date
-config_filename_2 = 'C:\\Users\\vince\\Desktop\\Contrader\\Calcio\\Olbia\\config\\stats_names_to_first_and_last_match_date.pkl'
-a_file = open(config_filename_2, "wb")
+a_file = open(player_to_last_instat_match_path, "wb")
 pickle.dump(stats_names_to_first_and_last_match_date, a_file)
 a_file.close()
 
@@ -640,10 +680,10 @@ a_file.close()
 instat_path = config_file['paths']['instat_matches']
 all_instat_paths = [join(instat_path, f) for f in listdir(instat_path) if isfile(join(instat_path, f))]
 
-all_players_till_the_date = 'instat_all_players_matches_till_the_date'
+all_players_till_the_date = config_file['default_names']['data_aggregation_name']
 
 if len(all_instat_paths) > 1:
-    all_instat_paths = [path  for path in all_instat_paths if (path[len(instat_path)+12:-5] == all_players_till_the_date)]
+    all_instat_paths = [path  for path in all_instat_paths if (path[len(instat_path)+12:] == all_players_till_the_date)]
 
 instat_data = pd.read_excel(all_instat_paths[0])
 instat_data.index = [('-'+str(i))  for i in range(instat_data.shape[0])]
@@ -744,8 +784,51 @@ in_stats_not_in_instat = in_stats_not_in_instat[in_stats_not_in_instat['distance
 instat_missing_date = set(in_stats_not_in_instat['date'])
 print('Missin dates in instat where "distance_from_the_match" = 0:\n{}'.format(len(instat_missing_date)))
 
+# JOIN
+all_data = all_data.join(instat_to_join)
+all_data.index
+checkpoint_joined = all_data
+all_data = checkpoint_joined
+
+# Correct names
+all_data = correct_sessione_and_esercizio(all_data, col1 = 'session', col2 = 'session')
+
+# K-MEANS ---------------------------------------------------------------------
+from sklearn.preprocessing import MinMaxScaler
+from sklearn.decomposition import PCA
+from sklearn.cluster import KMeans
+from work_dir.utils.data_functions import chooseBestKforKMeans
+
+exclude_full_trainings = all_data['full_training'] != 1
+exclude_match_days = all_data['distance_from_match'] != 0
+selected_variables = config_file["selected_variables"]
+selected_variables = [i for i in selected_variables if i not in ['notes','session']]
+kmeans_data = all_data[selected_variables][exclude_full_trainings & exclude_match_days].copy()
+
+scaler = MinMaxScaler()
+kmeans_data_scaled = scaler.fit_transform(kmeans_data)
+kmeans_data_scaled_df = pd.DataFrame(kmeans_data_scaled)
+kmeans_data_scaled_df.columns = selected_variables
+
+n_components_complete = kmeans_data_scaled_df.shape[1]
+pca_complete=PCA(n_components=n_components_complete)
+kmeans_data_pca = pca_complete.fit_transform(kmeans_data_scaled_df)
+max_cluster_number = 20
+random_state = 1
+
+best_k, results = chooseBestKforKMeans(scaled_data = kmeans_data_pca, k_range = range(1, max_cluster_number +1))
+km = KMeans(n_clusters=best_k, random_state=random_state)
+km.fit(kmeans_data_pca)
+y_pred = km.predict(kmeans_data_pca)
+kmeans_data['kmeans'] = y_pred
+
+kmeans_data['kmeans'].value_counts()
+kmeans_data.index
+
+all_data = all_data.join(kmeans_data['kmeans'])
+
 
 # JOIN ------------------------------------------------------------------------
-df = all_data.join(instat_to_join)
 path_to_joined =  config_file['paths']['joined']
-df.to_excel(path_to_joined)
+all_data.to_excel(path_to_joined)
+

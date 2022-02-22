@@ -3,7 +3,8 @@ from selenium.webdriver.common.keys import Keys
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
-from os import listdir
+from os import listdir, chdir
+chdir('..\\')
 from os.path import isfile, join
 import time
 import pickle
@@ -28,7 +29,8 @@ number_of_files_already_downloaded = len(already_downloaded)
 
 # Setto il webdriver
 chrome_options = webdriver.ChromeOptions()
-prefs = {'download.default_directory' : downloads_path}
+directory = os.getcwd() + downloads_path[1:]
+prefs = {'download.default_directory': directory}
 chrome_options.add_experimental_option('prefs', prefs)
 driver = webdriver.Chrome(chromedriver, chrome_options=chrome_options)
 driver.maximize_window()
